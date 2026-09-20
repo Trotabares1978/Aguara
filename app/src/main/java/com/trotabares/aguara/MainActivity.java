@@ -51,8 +51,9 @@ public class MainActivity extends Activity {
         root.addView(subtitulo, new LinearLayout.LayoutParams(
                 -1, dp(30)));
 
-        TextView portada = text("🐺", 82, blanco);
-        portada.setBackgroundColor(Color.rgb(32, 32, 32));
+        android.widget.ImageView portada = new android.widget.ImageView(this);
+        portada.setImageResource(com.trotabares.aguara.R.drawable.aguara_cover);
+        portada.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
         root.addView(portada, new LinearLayout.LayoutParams(
                 dp(280), dp(280)));
 
