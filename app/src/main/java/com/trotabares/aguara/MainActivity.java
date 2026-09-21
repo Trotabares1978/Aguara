@@ -663,13 +663,85 @@ public class MainActivity extends Activity {
             Uri carpeta,
             ArrayList<Uri> destino) {
 
-        for (Uri elemento : obtenerElementosCarpeta(carpeta)) {
-            if (esCarpeta(elemento)) {
-                escanearRecursivamente(elemento, destino);
-            } else if (esAudio(elemento)) {
-                destino.add(elemento);
+        try {
+            String id;
+
+            if (DocumentsContract.isTreeUri(carpeta)) {
+                id = DocumentsContract.getTreeDocumentId(carpeta);
+            } else {
+                id = DocumentsContract.getDocumentId(carpeta);
             }
+
+            Uri children =
+                    DocumentsContract.buildChildDocumentsUriUsingTree(
+                            carpeta,
+                            id
+                    );
+
+            String[] projection = {
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+            };
+
+            try (Cursor cursor =
+                         getContentResolver().query(
+                                 children,
+                                 projection,
+                                 null,
+                                 null,
+                                 null)) {
+
+                if (cursor == null) {
+                    return;
+                }
+
+                int idIndex = cursor.getColumnIndex(
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID
+                );
+                int mimeIndex = cursor.getColumnIndex(
+                        DocumentsContract.Document.COLUMN_MIME_TYPE
+                );
+                int nameIndex = cursor.getColumnIndex(
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                );
+
+                while (cursor.moveToNext()) {
+                    String documentId = cursor.getString(idIndex);
+                    String mimeType = cursor.getString(mimeIndex);
+                    String nombre = cursor.getString(nameIndex);
+
+                    Uri elemento =
+                            DocumentsContract.buildDocumentUriUsingTree(
+                                    carpeta,
+                                    documentId
+                            );
+
+                    if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType)) {
+                        escanearRecursivamente(elemento, destino);
+                    } else if (nombre != null && esAudioPorNombre(nombre)) {
+                        destino.add(elemento);
+                    }
+                }
+            }
+
+        } catch (Exception ignored) {
         }
+    }
+
+    private boolean esAudioPorNombre(String nombre) {
+        String n = nombre.toLowerCase(Locale.ROOT);
+
+        return n.endsWith(".mp3") ||
+                n.endsWith(".m4a") ||
+                n.endsWith(".flac") ||
+                n.endsWith(".wav") ||
+                n.endsWith(".ogg") ||
+                n.endsWith(".aac") ||
+                n.endsWith(".opus") ||
+                n.endsWith(".wma") ||
+                n.endsWith(".aiff") ||
+                n.endsWith(".aif");
     }
 
     private void ordenarListaActual() {
