@@ -134,6 +134,33 @@ public class MainActivity extends Activity {
         bibliotecaParams.topMargin = dp(12);
         root.addView(biblioteca, bibliotecaParams);
 
+        Button abrir = new Button(this);
+        abrir.setText("📂  ABRIR");
+        abrir.setOnClickListener(v -> {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("¿Qué querés abrir?")
+                    .setItems(new String[]{"🎵 Archivo de audio", "📂 Carpeta"}, (dialog, which) -> {
+                        if (which == 0) {
+                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                            intent.setType("audio/*");
+                            intent.addCategory(Intent.CATEGORY_OPENABLE);
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                            startActivityForResult(intent, 1002);
+                        } else {
+                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+                            startActivityForResult(intent, 1003);
+                        }
+                    })
+                    .show();
+        });
+        abrir.setTextColor(blanco);
+
+        LinearLayout.LayoutParams abrirParams =
+                new LinearLayout.LayoutParams(-1, dp(55));
+        abrirParams.topMargin = dp(8);
+        root.addView(abrir, abrirParams);
+
         setContentView(root);
     }
     @Override
