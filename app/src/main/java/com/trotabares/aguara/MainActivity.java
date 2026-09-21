@@ -1,6 +1,7 @@
 package com.trotabares.aguara;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.content.Intent;
 import android.net.Uri;
@@ -36,6 +37,7 @@ public class MainActivity extends Activity {
 
     private final ArrayList<Uri> folderStack = new ArrayList<>();
     private final ArrayList<Uri> currentAudioList = new ArrayList<>();
+    private final ArrayList<Uri> listaOriginal = new ArrayList<>();
     private int currentAudioIndex = -1;
 
     private TextView cancion;
@@ -48,7 +50,8 @@ public class MainActivity extends Activity {
     private Button repetir;
 
     private boolean modoAleatorio = false;
-    private boolean repetirLista = false;
+    // 0 = sin repetir, 1 = repetir canción, 2 = repetir lista
+    private int modoRepeticion = 0;
 
     private final Random random = new Random();
     private final Handler handler = new Handler();
@@ -237,6 +240,16 @@ public class MainActivity extends Activity {
 
         vista.addView(modos);
 
+        Button cola = new Button(this);
+        cola.setText("☰  COLA");
+        cola.setTextColor(blanco);
+        cola.setOnClickListener(v -> mostrarCola());
+
+        LinearLayout.LayoutParams colaParams =
+                new LinearLayout.LayoutParams(-1, dp(50));
+        colaParams.topMargin = dp(4);
+        vista.addView(cola, colaParams);
+
         Button biblioteca = new Button(this);
         biblioteca.setText("🎵  BIBLIOTECA");
         biblioteca.setTextColor(blanco);
@@ -263,24 +276,137 @@ public class MainActivity extends Activity {
     }
 
     private void alternarAleatorio() {
+        if (currentAudioList.isEmpty()) {
+            return;
+        }
+
+        Uri actual = null;
+        if (currentAudioIndex >= 0 &&
+                currentAudioIndex < currentAudioList.size()) {
+            actual = currentAudioList.get(currentAudioIndex);
+        }
+
         modoAleatorio = !modoAleatorio;
+
+        if (modoAleatorio) {
+            ArrayList<Uri> mezcla = new ArrayList<>(currentAudioList);
+
+            if (actual != null) {
+                mezcla.remove(actual);
+            }
+
+            Collections.shuffle(mezcla, random);
+
+            currentAudioList.clear();
+
+            if (actual != null) {
+                currentAudioList.add(actual);
+            }
+
+            currentAudioList.addAll(mezcla);
+            currentAudioIndex = actual == null ? 0 : 0;
+        } else {
+            currentAudioList.clear();
+            currentAudioList.addAll(listaOriginal);
+
+            if (actual != null) {
+                int indice = currentAudioList.indexOf(actual);
+                currentAudioIndex = indice >= 0 ? indice : 0;
+            } else {
+                currentAudioIndex = currentAudioList.isEmpty() ? -1 : 0;
+            }
+        }
+
         actualizarTextoModos();
     }
 
+
+
     private void alternarRepetir() {
-        repetirLista = !repetirLista;
+        modoRepeticion++;
+
+        if (modoRepeticion > 2) {
+            modoRepeticion = 0;
+        }
+
         actualizarTextoModos();
     }
+
+
 
     private void actualizarTextoModos() {
         if (aleatorio != null) {
-            aleatorio.setText(modoAleatorio ? "🔀 ON" : "🔀");
+            aleatorio.setText(
+                    modoAleatorio ? "🔀 ON" : "🔀"
+            );
         }
 
         if (repetir != null) {
-            repetir.setText(repetirLista ? "🔁 ON" : "🔁");
+            if (modoRepeticion == 1) {
+                repetir.setText("🔂");
+            } else if (modoRepeticion == 2) {
+                repetir.setText("🔁");
+            } else {
+                repetir.setText("🔁");
+            }
         }
     }
+
+    private void mostrarCola() {
+        if (currentAudioList.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Cola de reproducción")
+                    .setMessage("Todavía no hay canciones cargadas.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        String[] nombres = new String[currentAudioList.size()];
+
+        for (int i = 0; i < currentAudioList.size(); i++) {
+            String nombre = obtenerNombreElemento(
+                    currentAudioList.get(i)
+            );
+
+            if (nombre == null || nombre.trim().isEmpty()) {
+                nombre = "Audio";
+            }
+
+            String prefijo = (i == currentAudioIndex)
+                    ? "▶  "
+                    : "    ";
+
+            nombres[i] = prefijo + (i + 1) + ". " + nombre;
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(
+                        "Cola · " + currentAudioList.size() + " canciones"
+                )
+                .setItems(nombres, null)
+                .setNegativeButton("CERRAR", null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            android.widget.ListView lista =
+                    dialog.getListView();
+
+            lista.setOnItemClickListener(
+                    (parent, view, position, id) -> {
+                        currentAudioIndex = position;
+                        reproducirAudio(
+                                currentAudioList.get(position)
+                        );
+                        dialog.dismiss();
+                    }
+            );
+        });
+
+        dialog.show();
+    }
+
+
 
     private void abrirBiblioteca() {
         if (treeUri != null) {
@@ -458,10 +584,11 @@ public class MainActivity extends Activity {
     }
 
     private void cargarCarpetaCompleta(Uri carpeta) {
+        listaOriginal.clear();
         currentAudioList.clear();
         currentAudioIndex = -1;
 
-        escanearRecursivamente(carpeta, currentAudioList);
+        escanearRecursivamente(carpeta, listaOriginal);
 
         Comparator<Uri> cmp =
                 (a, b) -> obtenerNombreElemento(a)
@@ -469,13 +596,20 @@ public class MainActivity extends Activity {
                                 obtenerNombreElemento(b)
                         );
 
-        Collections.sort(currentAudioList, cmp);
+        Collections.sort(listaOriginal, cmp);
+        currentAudioList.addAll(listaOriginal);
+
+        if (modoAleatorio && !currentAudioList.isEmpty()) {
+            Collections.shuffle(currentAudioList, random);
+        }
 
         if (!currentAudioList.isEmpty()) {
             currentAudioIndex = 0;
             reproducirAudio(currentAudioList.get(0));
         }
     }
+
+
 
     private void mostrarCarpeta(Uri carpeta) {
         currentFolderUri = carpeta;
@@ -604,8 +738,12 @@ public class MainActivity extends Activity {
             );
 
             item.setOnClickListener(v -> {
+                listaOriginal.clear();
+                listaOriginal.add(u);
+
                 currentAudioList.clear();
                 currentAudioList.add(u);
+
                 currentAudioIndex = 0;
                 reproducirAudio(u);
             });
@@ -741,48 +879,22 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if (modoAleatorio && currentAudioList.size() > 1) {
-            int siguiente;
-
-            do {
-                siguiente = random.nextInt(
-                        currentAudioList.size()
-                );
-            } while (siguiente == currentAudioIndex);
-
-            currentAudioIndex = siguiente;
-
-            reproducirAudio(
-                    currentAudioList.get(currentAudioIndex)
-            );
-
-            return;
-        }
-
-        if (currentAudioIndex + 1 <
-                currentAudioList.size()) {
-
+        if (currentAudioIndex + 1 < currentAudioList.size()) {
             currentAudioIndex++;
-
-            reproducirAudio(
-                    currentAudioList.get(currentAudioIndex)
-            );
-
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
             return;
         }
 
-        if (repetirLista) {
+        if (modoRepeticion == 2) {
             currentAudioIndex = 0;
-
-            reproducirAudio(
-                    currentAudioList.get(currentAudioIndex)
-            );
-
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
         } else {
             currentAudioIndex = -1;
             play.setText("▶");
         }
     }
+
+
 
     private void reproducirSiguienteAutomatico() {
         if (currentAudioList.isEmpty()) {
@@ -790,20 +902,30 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if (currentAudioList.size() == 1) {
-            if (repetirLista) {
+        if (modoRepeticion == 1) {
+            if (currentAudioIndex < 0) {
                 currentAudioIndex = 0;
-                reproducirAudio(
-                        currentAudioList.get(0)
-                );
-            } else {
-                play.setText("▶");
             }
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
             return;
         }
 
-        reproducirSiguiente();
+        if (currentAudioIndex + 1 < currentAudioList.size()) {
+            currentAudioIndex++;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+            return;
+        }
+
+        if (modoRepeticion == 2) {
+            currentAudioIndex = 0;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+        } else {
+            currentAudioIndex = -1;
+            play.setText("▶");
+        }
     }
+
+
 
     private void actualizarDatosAudio(Uri audio) {
         String nombre = obtenerNombreElemento(audio);
