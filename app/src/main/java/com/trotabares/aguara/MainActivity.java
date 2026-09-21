@@ -72,6 +72,7 @@ public class MainActivity extends Activity {
     private boolean actualEsFavorito = false;
     private int posicionReanudar = 0;
     private boolean reanudarDesdeGuardado = false;
+    private boolean iniciarReproduccionAlPreparar = true;
 
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
@@ -835,15 +836,54 @@ public class MainActivity extends Activity {
                     }
 
                     if (!currentAudioList.isEmpty()) {
-                        currentAudioIndex = 0;
+                        String ultimaUriGuardada =
+                                getSharedPreferences("aguara", MODE_PRIVATE)
+                                        .getString("last_audio_uri", null);
+
+                        int indiceUltima = -1;
+
+                        if (ultimaUriGuardada != null &&
+                                !ultimaUriGuardada.trim().isEmpty()) {
+
+                            for (int i = 0;
+                                    i < currentAudioList.size();
+                                    i++) {
+
+                                if (ultimaUriGuardada.equals(
+                                        currentAudioList.get(i).toString())) {
+                                    indiceUltima = i;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (indiceUltima >= 0) {
+                            currentAudioIndex = indiceUltima;
+
+                            posicionReanudar =
+                                    getSharedPreferences("aguara", MODE_PRIVATE)
+                                            .getInt("last_position", 0);
+
+                            reanudarDesdeGuardado = true;
+                            iniciarReproduccionAlPreparar = false;
+
+                        } else {
+                            currentAudioIndex = 0;
+                            posicionReanudar = 0;
+                            reanudarDesdeGuardado = false;
+                            iniciarReproduccionAlPreparar = false;
+                        }
 
                         if (estadoCola != null) {
                             estadoCola.setText(
-                                    currentAudioList.size() + " canciones cargadas"
+                                    currentAudioList.size()
+                                            + " canciones cargadas"
                             );
                         }
 
-                        reproducirAudio(currentAudioList.get(0));
+                        reproducirAudio(
+                                currentAudioList.get(currentAudioIndex)
+                        );
                     } else {
                         currentAudioIndex = -1;
 
@@ -1060,14 +1100,21 @@ public class MainActivity extends Activity {
                 }
 
                 guardarEnHistorial(audioActualUri);
-                guardarUltimaPosicion();
 
-                mp.start();
+                if (iniciarReproduccionAlPreparar) {
+                    guardarUltimaPosicion();
+
+                    mp.start();
+                    play.setText("⏸");
+
+                    handler.removeCallbacks(actualizarProgreso);
+                    handler.post(actualizarProgreso);
+                } else {
+                    play.setText("▶");
+                }
+
                 posicionReanudar = 0;
-                play.setText("⏸");
-
-                handler.removeCallbacks(actualizarProgreso);
-                handler.post(actualizarProgreso);
+                iniciarReproduccionAlPreparar = true;
             });
 
             reproductor.setOnCompletionListener(mp -> {
