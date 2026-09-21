@@ -1194,22 +1194,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             return;
         }
 
-        try {
-            int audioSessionId = reproductor.getAudioSessionId();
-            if (audioSessionId == 0) {
-                throw new IllegalStateException();
-            }
-
-            Intent intent = new Intent(this, EqualizerActivity.class);
-            intent.putExtra("audio_session_id", audioSessionId);
-            startActivity(intent);
-        } catch (Exception ignored) {
-            new AlertDialog.Builder(this)
-                    .setTitle("ECUALIZADOR")
-                    .setMessage("El dispositivo no pudo abrir el ecualizador para esta reproducción.")
-                    .setPositiveButton("OK", null)
-                    .show();
-        }
+        Intent intent = new Intent(this, EqualizerActivity.class);
+        startActivity(intent);
     }
 
     private void alternarReproduccion() {
