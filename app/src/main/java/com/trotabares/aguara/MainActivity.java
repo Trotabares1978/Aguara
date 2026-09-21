@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
 
     private TextView cancion;
     private TextView artista;
+    private TextView estadoCola;
     private Button play;
     private SeekBar progreso;
     private MediaPlayer reproductor;
@@ -150,6 +151,12 @@ public class MainActivity extends Activity {
         vista.addView(
                 artista,
                 new LinearLayout.LayoutParams(-1, dp(30))
+        );
+
+        estadoCola = text("Sin cola cargada", 13, gris);
+        vista.addView(
+                estadoCola,
+                new LinearLayout.LayoutParams(-1, dp(26))
         );
 
         progreso = new SeekBar(this);
@@ -337,7 +344,7 @@ public class MainActivity extends Activity {
             } else if (modoRepeticion == 2) {
                 repetir.setText("🔁");
             } else {
-                repetir.setText("🔁");
+                repetir.setText("↪");
             }
         }
     }
@@ -372,7 +379,12 @@ public class MainActivity extends Activity {
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(
-                        "Cola · " + currentAudioList.size() + " canciones"
+                        "Cola · " + currentAudioList.size() +
+                                " canciones" +
+                                (currentAudioIndex >= 0
+                                        ? " · " + (currentAudioIndex + 1)
+                                                + "/" + currentAudioList.size()
+                                        : "")
                 )
                 .setItems(nombres, null)
                 .setNegativeButton("CERRAR", null)
@@ -882,6 +894,9 @@ public class MainActivity extends Activity {
         } else {
             currentAudioIndex = -1;
             play.setText("▶");
+            if (estadoCola != null) {
+                estadoCola.setText("Fin de la cola");
+            }
         }
     }
 
@@ -890,6 +905,9 @@ public class MainActivity extends Activity {
     private void reproducirSiguienteAutomatico() {
         if (currentAudioList.isEmpty()) {
             play.setText("▶");
+            if (estadoCola != null) {
+                estadoCola.setText("Sin cola cargada");
+            }
             return;
         }
 
@@ -913,6 +931,9 @@ public class MainActivity extends Activity {
         } else {
             currentAudioIndex = -1;
             play.setText("▶");
+            if (estadoCola != null) {
+                estadoCola.setText("Fin de la cola");
+            }
         }
     }
 
@@ -949,6 +970,13 @@ public class MainActivity extends Activity {
 
         cancion.setText(titulo);
         artista.setText(artistaNombre);
+
+        if (estadoCola != null && !currentAudioList.isEmpty()) {
+            int posicion = currentAudioIndex + 1;
+            estadoCola.setText(
+                    "Canción " + posicion + " de " + currentAudioList.size()
+            );
+        }
     }
 
     private String[] obtenerInfoAudio(Uri uri) {
