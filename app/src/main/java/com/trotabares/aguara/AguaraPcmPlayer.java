@@ -7,7 +7,7 @@ import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.net.Uri;
+import android.net.Uri;\nimport android.os.Handler;\nimport android.os.Looper;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -19,7 +19,7 @@ public class AguaraPcmPlayer {
 
     private static volatile AguaraPcmPlayer activePlayer;
 
-    private final Context context;
+    private final Context context;\n    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Uri sourceUri;
     private MediaExtractor extractor;
     private MediaCodec codec;
@@ -201,7 +201,7 @@ public class AguaraPcmPlayer {
                     prepared = true;
 
                     if (preparedListener != null) {
-                        preparedListener.onPrepared(this);
+                        OnPreparedListener listener = preparedListener;\n                        if (listener != null) mainHandler.post(() -> listener.onPrepared(this));
                     }
                     continue;
                 }
@@ -222,7 +222,7 @@ public class AguaraPcmPlayer {
                         playing = false;
                         if (audioTrack != null) audioTrack.pause();
                         if (completionListener != null && !released) {
-                            completionListener.onCompletion(this);
+                            OnCompletionListener listener = completionListener;\n                            if (listener != null) mainHandler.post(() -> listener.onCompletion(this));
                         }
                         break;
                     }
@@ -230,7 +230,7 @@ public class AguaraPcmPlayer {
             }
         } catch (Exception e) {
             if (!released && errorListener != null) {
-                errorListener.onError(this, -1, 0);
+                OnErrorListener listener = errorListener;\n                if (listener != null) mainHandler.post(() -> listener.onError(this, -1, 0));
             }
         } finally {
             cleanup();
