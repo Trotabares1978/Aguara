@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.os.Handler;
 
 import java.util.ArrayList;
@@ -24,14 +25,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Random;
-
-import androidx.media3.common.MediaItem;
-import androidx.media3.common.MediaMetadata;
-import androidx.media3.common.Player;
-import androidx.media3.session.MediaController;
-import androidx.media3.session.SessionToken;
-
-import com.google.common.util.concurrent.ListenableFuture;
 
 public class MainActivity extends Activity {
 
@@ -51,8 +44,7 @@ public class MainActivity extends Activity {
     private TextView artista;
     private Button play;
     private SeekBar progreso;
-    private MediaController reproductor;
-    private ListenableFuture<MediaController> controllerFuture;
+    private MediaPlayer reproductor;
 
     private Button aleatorio;
     private Button repetir;
@@ -67,24 +59,9 @@ public class MainActivity extends Activity {
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
         public void run() {
-            if (reproductor != null) {
-                try {
-                    if (reproductor.getDuration() > 0) {
-                        progreso.setMax((int) Math.min(
-                                reproductor.getDuration(),
-                                Integer.MAX_VALUE
-                        ));
-                    }
-                    progreso.setProgress((int) Math.max(
-                            0,
-                            reproductor.getCurrentPosition()
-                    ));
-
-                    if (reproductor.isPlaying()) {
-                        handler.postDelayed(this, 500);
-                    }
-                } catch (Exception ignored) {
-                }
+            if (reproductor != null && reproductor.isPlaying()) {
+                progreso.setProgress(reproductor.getCurrentPosition());
+                handler.postDelayed(this, 500);
             }
         }
     };
@@ -107,81 +84,6 @@ public class MainActivity extends Activity {
         t.setTextColor(color);
         t.setGravity(Gravity.CENTER);
         return t;
-    }
-
-    private final Player.Listener playerListener = new Player.Listener() {
-        @Override
-        public void onMediaItemTransition(
-                MediaItem mediaItem,
-                int reason) {
-            actualizarInterfazDesdePlayer();
-        }
-
-        @Override
-        public void onIsPlayingChanged(boolean isPlaying) {
-            actualizarInterfazDesdePlayer();
-        }
-
-        @Override
-        public void onPlaybackStateChanged(int playbackState) {
-            actualizarInterfazDesdePlayer();
-        }
-    };
-
-    private void conectarAlServicioDeReproduccion() {
-        SessionToken token =
-                new SessionToken(
-                        this,
-                        new android.content.ComponentName(
-                                this,
-                                PlaybackService.class
-                        )
-                );
-
-        controllerFuture =
-                new MediaController.Builder(this, token)
-                        .buildAsync();
-
-        controllerFuture.addListener(() -> {
-            try {
-                reproductor = controllerFuture.get();
-                reproductor.addListener(playerListener);
-
-                if (!currentAudioList.isEmpty()) {
-                    actualizarInterfazDesdePlayer();
-                }
-            } catch (Exception ignored) {
-                reproductor = null;
-            }
-        }, Runnable::run);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        conectarAlServicioDeReproduccion();
-    }
-
-    @Override
-    protected void onStop() {
-        if (reproductor != null) {
-            try {
-                reproductor.removeListener(playerListener);
-            } catch (Exception ignored) {
-            }
-        }
-
-        if (controllerFuture != null) {
-            try {
-                MediaController controller = controllerFuture.get();
-                controller.release();
-            } catch (Exception ignored) {
-            }
-            controllerFuture = null;
-        }
-
-        reproductor = null;
-        super.onStop();
     }
 
     @Override
@@ -364,19 +266,51 @@ public class MainActivity extends Activity {
     }
 
     private void alternarAleatorio() {
-        if (reproductor == null || currentAudioList.isEmpty()) {
+        if (currentAudioList.isEmpty()) {
             return;
+        }
+
+        Uri actual = null;
+        if (currentAudioIndex >= 0 &&
+                currentAudioIndex < currentAudioList.size()) {
+            actual = currentAudioList.get(currentAudioIndex);
         }
 
         modoAleatorio = !modoAleatorio;
 
-        try {
-            reproductor.setShuffleModeEnabled(modoAleatorio);
-        } catch (Exception ignored) {
+        if (modoAleatorio) {
+            ArrayList<Uri> mezcla = new ArrayList<>(currentAudioList);
+
+            if (actual != null) {
+                mezcla.remove(actual);
+            }
+
+            Collections.shuffle(mezcla, random);
+
+            currentAudioList.clear();
+
+            if (actual != null) {
+                currentAudioList.add(actual);
+            }
+
+            currentAudioList.addAll(mezcla);
+            currentAudioIndex = actual == null ? 0 : 0;
+        } else {
+            currentAudioList.clear();
+            currentAudioList.addAll(listaOriginal);
+
+            if (actual != null) {
+                int indice = currentAudioList.indexOf(actual);
+                currentAudioIndex = indice >= 0 ? indice : 0;
+            } else {
+                currentAudioIndex = currentAudioList.isEmpty() ? -1 : 0;
+            }
         }
 
         actualizarTextoModos();
     }
+
+
 
     private void alternarRepetir() {
         modoRepeticion++;
@@ -385,29 +319,16 @@ public class MainActivity extends Activity {
             modoRepeticion = 0;
         }
 
-        if (reproductor != null) {
-            try {
-                int repeatMode;
-
-                if (modoRepeticion == 1) {
-                    repeatMode = Player.REPEAT_MODE_ONE;
-                } else if (modoRepeticion == 2) {
-                    repeatMode = Player.REPEAT_MODE_ALL;
-                } else {
-                    repeatMode = Player.REPEAT_MODE_OFF;
-                }
-
-                reproductor.setRepeatMode(repeatMode);
-            } catch (Exception ignored) {
-            }
-        }
-
         actualizarTextoModos();
     }
 
+
+
     private void actualizarTextoModos() {
         if (aleatorio != null) {
-            aleatorio.setText(modoAleatorio ? "🔀 ON" : "🔀");
+            aleatorio.setText(
+                    modoAleatorio ? "🔀 ON" : "🔀"
+            );
         }
 
         if (repetir != null) {
@@ -416,7 +337,7 @@ public class MainActivity extends Activity {
             } else if (modoRepeticion == 2) {
                 repetir.setText("🔁");
             } else {
-                repetir.setText("↪");
+                repetir.setText("🔁");
             }
         }
     }
@@ -464,13 +385,9 @@ public class MainActivity extends Activity {
             lista.setOnItemClickListener(
                     (parent, view, position, id) -> {
                         currentAudioIndex = position;
-                        if (reproductor != null) {
-                            try {
-                                reproductor.seekToDefaultPosition(position);
-                                reproductor.play();
-                            } catch (Exception ignored) {
-                            }
-                        }
+                        reproducirAudio(
+                                currentAudioList.get(position)
+                        );
                         dialog.dismiss();
                     }
             );
@@ -673,9 +590,13 @@ public class MainActivity extends Activity {
         Collections.sort(listaOriginal, cmp);
         currentAudioList.addAll(listaOriginal);
 
+        if (modoAleatorio && !currentAudioList.isEmpty()) {
+            Collections.shuffle(currentAudioList, random);
+        }
+
         if (!currentAudioList.isEmpty()) {
             currentAudioIndex = 0;
-            cargarColaEnReproductor(0);
+            reproducirAudio(currentAudioList.get(0));
         }
     }
 
@@ -815,7 +736,7 @@ public class MainActivity extends Activity {
                 currentAudioList.add(u);
 
                 currentAudioIndex = 0;
-                cargarColaEnReproductor(0);
+                reproducirAudio(u);
             });
 
             lista.addView(
@@ -850,70 +771,50 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
-    private void cargarColaEnReproductor(int indiceInicial) {
-        if (reproductor == null || currentAudioList.isEmpty()) {
-            return;
-        }
-
-        ArrayList<MediaItem> items = new ArrayList<>();
-
-        for (Uri uri : currentAudioList) {
-            String nombre = obtenerNombreElemento(uri);
-            if (nombre == null || nombre.trim().isEmpty()) {
-                nombre = "Audio";
-            }
-
-            MediaItem item = new MediaItem.Builder()
-                    .setUri(uri)
-                    .setMediaMetadata(
-                            new MediaMetadata.Builder()
-                                    .setTitle(nombre)
-                                    .build()
-                    )
-                    .build();
-
-            items.add(item);
-        }
-
+    private void reproducirAudio(Uri audio) {
         try {
-            reproductor.setMediaItems(items, indiceInicial, 0);
-            reproductor.setShuffleModeEnabled(modoAleatorio);
-
-            if (modoRepeticion == 1) {
-                reproductor.setRepeatMode(Player.REPEAT_MODE_ONE);
-            } else if (modoRepeticion == 2) {
-                reproductor.setRepeatMode(Player.REPEAT_MODE_ALL);
-            } else {
-                reproductor.setRepeatMode(Player.REPEAT_MODE_OFF);
+            if (reproductor != null) {
+                reproductor.release();
             }
 
-            reproductor.prepare();
-            reproductor.play();
+            reproductor = new MediaPlayer();
+            reproductor.setDataSource(this, audio);
 
-            currentAudioIndex = indiceInicial;
-            actualizarDatosAudio(currentAudioList.get(indiceInicial));
-            actualizarTextoModos();
-            handler.removeCallbacks(actualizarProgreso);
-            handler.post(actualizarProgreso);
+            reproductor.setOnPreparedListener(mp -> {
+                progreso.setMax(mp.getDuration());
+                progreso.setProgress(0);
+
+                mp.start();
+                play.setText("⏸");
+
+                handler.removeCallbacks(actualizarProgreso);
+                handler.post(actualizarProgreso);
+            });
+
+            reproductor.setOnCompletionListener(mp -> {
+                progreso.setProgress(0);
+                reproducirSiguienteAutomatico();
+            });
+
+            reproductor.setOnErrorListener((mp, what, extra) -> {
+                play.setText("▶");
+                return false;
+            });
+
+            actualizarDatosAudio(audio);
+
+            setContentView(root);
+
+            reproductor.prepareAsync();
 
         } catch (Exception e) {
+            if (reproductor != null) {
+                reproductor.release();
+                reproductor = null;
+            }
+
             play.setText("▶");
         }
-    }
-
-    private void reproducirAudio(Uri audio) {
-        int indice = currentAudioList.indexOf(audio);
-
-        if (indice < 0) {
-            currentAudioList.clear();
-            currentAudioList.add(audio);
-            listaOriginal.clear();
-            listaOriginal.add(audio);
-            indice = 0;
-        }
-
-        currentAudioIndex = indice;
-        cargarColaEnReproductor(indice);
     }
 
     private void alternarReproduccion() {
@@ -926,7 +827,7 @@ public class MainActivity extends Activity {
                 reproductor.pause();
                 play.setText("▶");
             } else {
-                reproductor.play();
+                reproductor.start();
                 play.setText("⏸");
                 handler.post(actualizarProgreso);
             }
@@ -935,52 +836,87 @@ public class MainActivity extends Activity {
     }
 
     private void reproducirAnterior() {
-        if (reproductor == null) {
+        if (reproductor != null) {
+            try {
+                if (reproductor.getCurrentPosition() > 3000) {
+                    reproductor.seekTo(0);
+                    progreso.setProgress(0);
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (currentAudioList.size() <= 1 ||
+                currentAudioIndex <= 0) {
+            if (reproductor != null) {
+                try {
+                    reproductor.seekTo(0);
+                    progreso.setProgress(0);
+                } catch (Exception ignored) {
+                }
+            }
             return;
         }
 
-        try {
-            reproductor.seekToPrevious();
-        } catch (Exception ignored) {
-        }
+        currentAudioIndex--;
+        reproducirAudio(
+                currentAudioList.get(currentAudioIndex)
+        );
     }
 
     private void reproducirSiguiente() {
-        if (reproductor == null) {
+        if (currentAudioList.isEmpty()) {
             return;
         }
 
-        try {
-            reproductor.seekToNext();
-        } catch (Exception ignored) {
-        }
-    }
-
-    private void actualizarInterfazDesdePlayer() {
-        if (reproductor == null) {
+        if (currentAudioIndex + 1 < currentAudioList.size()) {
+            currentAudioIndex++;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
             return;
         }
 
-        try {
-            currentAudioIndex = reproductor.getCurrentMediaItemIndex();
-
-            if (currentAudioIndex >= 0 &&
-                    currentAudioIndex < currentAudioList.size()) {
-                actualizarDatosAudio(
-                        currentAudioList.get(currentAudioIndex)
-                );
-            }
-
-            if (reproductor.isPlaying()) {
-                play.setText("⏸");
-                handler.removeCallbacks(actualizarProgreso);
-                handler.post(actualizarProgreso);
-            } else {
-                play.setText("▶");
-            }
-        } catch (Exception ignored) {
+        if (modoRepeticion == 2) {
+            currentAudioIndex = 0;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+        } else {
+            currentAudioIndex = -1;
+            play.setText("▶");
         }
     }
+
+
+
+    private void reproducirSiguienteAutomatico() {
+        if (currentAudioList.isEmpty()) {
+            play.setText("▶");
+            return;
+        }
+
+        if (modoRepeticion == 1) {
+            if (currentAudioIndex < 0) {
+                currentAudioIndex = 0;
+            }
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+            return;
+        }
+
+        if (currentAudioIndex + 1 < currentAudioList.size()) {
+            currentAudioIndex++;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+            return;
+        }
+
+        if (modoRepeticion == 2) {
+            currentAudioIndex = 0;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+        } else {
+            currentAudioIndex = -1;
+            play.setText("▶");
+        }
+    }
+
+
 
     private void actualizarDatosAudio(Uri audio) {
         String nombre = obtenerNombreElemento(audio);
@@ -1089,6 +1025,16 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(actualizarProgreso);
+
+        if (reproductor != null) {
+            try {
+                reproductor.release();
+            } catch (Exception ignored) {
+            }
+
+            reproductor = null;
+        }
+
         super.onDestroy();
     }
 }
