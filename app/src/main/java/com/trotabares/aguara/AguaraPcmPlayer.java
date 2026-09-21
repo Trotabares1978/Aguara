@@ -56,11 +56,16 @@ public class AguaraPcmPlayer {
     private OnErrorListener errorListener;
 
     private final BandFilter[] filters = new BandFilter[]{
-            new BandFilter(60f),
+            new BandFilter(31f),
+            new BandFilter(62f),
+            new BandFilter(125f),
             new BandFilter(250f),
+            new BandFilter(500f),
             new BandFilter(1000f),
+            new BandFilter(2000f),
             new BandFilter(4000f),
-            new BandFilter(12000f)
+            new BandFilter(8000f),
+            new BandFilter(16000f)
     };
 
     public AguaraPcmPlayer(Context context) {
