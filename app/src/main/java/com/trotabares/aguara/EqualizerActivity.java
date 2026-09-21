@@ -187,7 +187,7 @@ public class EqualizerActivity extends Activity {
         agregarControl(panel, "BASS BOOST", "0", "12 dB", 0f, 12f,
                 player.getBassBoost(), value -> player.setBassBoost(value));
 
-        agregarControl(panel, "VÁLVVULA · DRIVE", "Limpio", "12", 0f, 12f,
+        agregarControl(panel, "VÁLVULA · DRIVE", "Limpio", "12", 0f, 12f,
                 player.getTubeDrive(), value -> player.setTubeDrive(value));
 
         agregarControl(panel, "VINILO · AMBIENTE", "0", "100", 0f, 100f,
