@@ -4,7 +4,7 @@
     <application
         android:allowBackup="true"
         android:label="AGUARÁ"
-        android:icon="@drawable/aguara_icon"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Aguara">
 
