@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -48,6 +49,9 @@ public class MainActivity extends Activity {
     private TextView artista;
     private TextView album;
     private ImageView portada;
+    private LinearLayout miniPlayer;
+    private TextView miniTitulo;
+    private Button miniPlay;
     private TextView estadoCola;
     private Button favorito;
     private Button play;
@@ -165,13 +169,14 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1, dp(30))
         );
 
-        favorito = new Button(this);
-        favorito.setText("♡  FAVORITO");
-        favorito.setOnClickListener(v -> alternarFavoritoActual());
-        LinearLayout.LayoutParams fp =
-                new LinearLayout.LayoutParams(-1, dp(48));
-        fp.topMargin = dp(4);
-        vista.addView(favorito, fp);
+        Button abrir = new Button(this);
+        abrir.setText("📂  ABRIR MÚSICA / CARPETAS");
+        abrir.setTextColor(blanco);
+        abrir.setOnClickListener(v -> mostrarDialogoAbrir());
+        LinearLayout.LayoutParams ap =
+                new LinearLayout.LayoutParams(-1, dp(56));
+        ap.topMargin = dp(8);
+        vista.addView(abrir, ap);
 
         estadoCola = text("Sin cola cargada", 13, gris);
         vista.addView(
@@ -245,6 +250,58 @@ public class MainActivity extends Activity {
 
         vista.addView(controles);
 
+        miniPlayer = new LinearLayout(this);
+        miniPlayer.setOrientation(LinearLayout.HORIZONTAL);
+        miniPlayer.setGravity(Gravity.CENTER_VERTICAL);
+        miniPlayer.setPadding(dp(12), dp(6), dp(8), dp(6));
+        miniPlayer.setBackgroundColor(Color.rgb(30, 30, 30));
+
+        miniTitulo = text("Sin canción", 13, blanco);
+        LinearLayout.LayoutParams miniTituloParams =
+                new LinearLayout.LayoutParams(0, dp(42), 1f);
+        miniPlayer.addView(miniTitulo, miniTituloParams);
+
+        miniPlay = new Button(this);
+        miniPlay.setText("▶");
+        miniPlay.setTextSize(18);
+        miniPlay.setTextColor(blanco);
+        miniPlay.setBackgroundColor(Color.TRANSPARENT);
+        miniPlay.setOnClickListener(v -> alternarReproduccion());
+        miniPlayer.addView(
+                miniPlay,
+                new LinearLayout.LayoutParams(dp(52), dp(48))
+        );
+
+        Button miniAbrir = new Button(this);
+        miniAbrir.setText("📂");
+        miniAbrir.setTextSize(20);
+        miniAbrir.setTextColor(blanco);
+        miniAbrir.setBackgroundColor(Color.TRANSPARENT);
+        miniAbrir.setContentDescription("Abrir música o carpetas");
+        miniAbrir.setOnClickListener(v -> mostrarDialogoAbrir());
+        miniPlayer.addView(
+                miniAbrir,
+                new LinearLayout.LayoutParams(dp(52), dp(48))
+        );
+
+        Button miniIrPlayer = new Button(this);
+        miniIrPlayer.setText("›");
+        miniIrPlayer.setTextSize(24);
+        miniIrPlayer.setTextColor(blanco);
+        miniIrPlayer.setBackgroundColor(Color.TRANSPARENT);
+        miniIrPlayer.setContentDescription("Ir al reproductor");
+        miniIrPlayer.setOnClickListener(v -> scrollPlayer());
+        miniPlayer.addView(
+                miniIrPlayer,
+                new LinearLayout.LayoutParams(dp(44), dp(48))
+        );
+
+        root.addView(
+                miniPlayer,
+                new LinearLayout.LayoutParams(-1, dp(54))
+        );
+
+
         LinearLayout modos = new LinearLayout(this);
         modos.setGravity(Gravity.CENTER);
 
@@ -277,23 +334,7 @@ public class MainActivity extends Activity {
         colaParams.topMargin = dp(4);
         vista.addView(cola, colaParams);
 
-        Button abrir = new Button(this);
-        abrir.setText("📂  ABRIR");
-        abrir.setTextColor(blanco);
-        abrir.setOnClickListener(v -> mostrarDialogoAbrir());
 
-        LinearLayout.LayoutParams ap =
-                new LinearLayout.LayoutParams(-1, dp(55));
-        ap.topMargin = dp(8);
-        vista.addView(abrir, ap);
-
-        Button favoritosBtn = new Button(this);
-        favoritosBtn.setText("♥  FAVORITOS");
-        favoritosBtn.setOnClickListener(v -> mostrarFavoritos());
-        LinearLayout.LayoutParams fbp =
-                new LinearLayout.LayoutParams(-1, dp(52));
-        fbp.topMargin = dp(6);
-        vista.addView(favoritosBtn, fbp);
 
         Button historialBtn = new Button(this);
         historialBtn.setText("🕘  HISTORIAL");
@@ -1022,6 +1063,35 @@ public class MainActivity extends Activity {
 
 
 
+    private void scrollPlayer() {
+        // Reservado para llevar la vista al reproductor completo cuando
+        // la navegación crezca. Por ahora actualiza el mini reproductor.
+        actualizarMiniPlayer();
+    }
+
+    private void actualizarMiniPlayer() {
+        if (miniPlayer == null || cancion == null) {
+            return;
+        }
+
+        String titulo = cancion.getText().toString();
+        if (titulo.trim().isEmpty()) {
+            titulo = "Sin canción";
+        }
+
+        if (miniTitulo != null) {
+            miniTitulo.setText(titulo);
+        }
+
+        if (miniPlay != null) {
+            if (reproductor != null && reproductor.isPlaying()) {
+                miniPlay.setText("⏸");
+            } else {
+                miniPlay.setText("▶");
+            }
+        }
+    }
+
     private void actualizarDatosAudio(Uri audio) {
         String fallback = obtenerNombreElemento(audio);
 
@@ -1045,6 +1115,8 @@ public class MainActivity extends Activity {
             portada.setImageDrawable(null);
             portada.setVisibility(View.GONE);
         }
+
+        actualizarMiniPlayer();
 
         new Thread(() -> {
             MediaMetadataRetriever mmr = new MediaMetadataRetriever();
@@ -1096,10 +1168,23 @@ public class MainActivity extends Activity {
                             portada.setImageBitmap(bitmap);
                             portada.setVisibility(View.VISIBLE);
                         }
+                    } else if (portada != null) {
+                        portada.setImageResource(
+                                com.trotabares.aguara.R.drawable.aguara_cover
+                        );
+                        portada.setVisibility(View.VISIBLE);
                     }
                 });
 
             } catch (Exception ignored) {
+                runOnUiThread(() -> {
+                    if (portada != null) {
+                        portada.setImageResource(
+                                com.trotabares.aguara.R.drawable.aguara_cover
+                        );
+                        portada.setVisibility(View.VISIBLE);
+                    }
+                });
                 // Los archivos sin metadatos siguen usando sus datos de respaldo.
             } finally {
                 try {
