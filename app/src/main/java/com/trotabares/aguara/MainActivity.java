@@ -554,25 +554,44 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
 
     private void mostrarDialogoAbrir() {
+        boolean hayCarpetaGuardada = treeUri != null;
+
+        String[] opciones = hayCarpetaGuardada
+                ? new String[]{
+                        "🎵 Archivo de audio",
+                        "📂 Usar última carpeta",
+                        "📁 Elegir otra carpeta"
+                }
+                : new String[]{
+                        "🎵 Archivo de audio",
+                        "📂 Elegir carpeta"
+                };
+
         new android.app.AlertDialog.Builder(this)
                 .setTitle("¿Qué querés abrir?")
-                .setItems(
-                        new String[]{"🎵 Archivo de audio", "📂 Carpeta"},
-                        (dialog, which) -> {
-                            if (which == 0) {
-                                Intent i =
-                                        new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                                i.setType("audio/*");
-                                i.addCategory(Intent.CATEGORY_OPENABLE);
-                                i.addFlags(
-                                        Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                                );
-                                startActivityForResult(i, REQUEST_AUDIO);
-                            } else {
-                                elegirCarpeta(REQUEST_FOLDER_FROM_OPEN);
-                            }
-                        })
+                .setItems(opciones, (dialog, which) -> {
+                    if (which == 0) {
+                        Intent i =
+                                new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        i.setType("audio/*");
+                        i.addCategory(Intent.CATEGORY_OPENABLE);
+                        i.addFlags(
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                        );
+                        startActivityForResult(i, REQUEST_AUDIO);
+                        return;
+                    }
+
+                    if (hayCarpetaGuardada && which == 1) {
+                        folderStack.clear();
+                        currentFolderUri = treeUri;
+                        cargarCarpetaCompleta(treeUri);
+                        return;
+                    }
+
+                    elegirCarpeta(REQUEST_FOLDER_FROM_OPEN);
+                })
                 .show();
     }
 
