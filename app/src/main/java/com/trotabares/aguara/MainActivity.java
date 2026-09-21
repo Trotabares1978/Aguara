@@ -371,6 +371,16 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         vista.addView(modos);
 
+        Button ecualizador = new Button(this);
+        ecualizador.setText("🎚  ECUALIZADOR");
+        ecualizador.setTextColor(blanco);
+        ecualizador.setOnClickListener(v -> abrirEcualizador());
+
+        LinearLayout.LayoutParams eqp =
+                new LinearLayout.LayoutParams(-1, dp(50));
+        eqp.topMargin = dp(4);
+        vista.addView(ecualizador, eqp);
+
         Button cola = new Button(this);
         cola.setText("☰  COLA");
         cola.setTextColor(blanco);
@@ -1171,6 +1181,34 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             }
 
             play.setText("▶");
+        }
+    }
+
+    private void abrirEcualizador() {
+        if (reproductor == null) {
+            new AlertDialog.Builder(this)
+                    .setTitle("ECUALIZADOR")
+                    .setMessage("Primero seleccioná una canción.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        try {
+            int audioSessionId = reproductor.getAudioSessionId();
+            if (audioSessionId == 0) {
+                throw new IllegalStateException();
+            }
+
+            Intent intent = new Intent(this, EqualizerActivity.class);
+            intent.putExtra("audio_session_id", audioSessionId);
+            startActivity(intent);
+        } catch (Exception ignored) {
+            new AlertDialog.Builder(this)
+                    .setTitle("ECUALIZADOR")
+                    .setMessage("El dispositivo no pudo abrir el ecualizador para esta reproducción.")
+                    .setPositiveButton("OK", null)
+                    .show();
         }
     }
 
