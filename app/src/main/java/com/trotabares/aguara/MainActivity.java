@@ -116,6 +116,21 @@ public class MainActivity extends Activity {
         }
 
         construirInterfazPrincipal();
+
+        if (treeUri != null) {
+            try {
+                getContentResolver().takePersistableUriPermission(
+                        treeUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+
+                cargarCarpetaCompleta(treeUri);
+
+            } catch (Exception ignored) {
+                treeUri = null;
+                currentFolderUri = null;
+            }
+        }
     }
 
     private void construirInterfazPrincipal() {
