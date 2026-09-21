@@ -42,7 +42,7 @@ public class AguaraPcmPlayer {
     private OnCompletionListener completionListener;
     private OnErrorListener errorListener;
 
-    private final BandFilter[] filters = new BandFilter[5];
+    private final BandFilter[] filters = new BandFilter[]{\n            new BandFilter(60f),\n            new BandFilter(250f),\n            new BandFilter(1000f),\n            new BandFilter(4000f),\n            new BandFilter(12000f)\n    };
     private final Object lock = new Object();
 
     public AguaraPcmPlayer(Context context) {
