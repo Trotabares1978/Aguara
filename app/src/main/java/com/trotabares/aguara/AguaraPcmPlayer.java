@@ -388,8 +388,16 @@ public class AguaraPcmPlayer {
             }
 
             if (tubeDrive > 0f) {
-                float drive = 1f + tubeDrive * 7f;
-                sample = (float) Math.tanh(sample * drive) / (float) Math.tanh(drive);
+                // Saturación de válvula suave y progresiva:
+                // el control mezcla una pequeña cantidad de señal saturada
+                // con la señal limpia, evitando que unos pocos puntos del
+                // deslizador produzcan una distorsión brusca.
+                float amount = tubeDrive / 12f;
+                float drive = 1f + amount * 2.0f;
+                float saturated = (float) Math.tanh(sample * drive)
+                        / (float) Math.tanh(drive);
+                float mix = amount * 0.28f;
+                sample = sample * (1f - mix) + saturated * mix;
             }
 
             if (vinylAmount > 0f) {
