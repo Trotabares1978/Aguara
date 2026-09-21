@@ -178,14 +178,14 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 new LinearLayout.LayoutParams(-1, dp(30)));
 
         Button apoyar = new Button(this);
-        apoiar.setText("☕  APOYAR AGUARÁ");
-        apoiar.setTextColor(blanco);
-        apoiar.setOnClickListener(v -> abrirDonacion());
+        apoyar.setText("☕  APOYAR AGUARÁ");
+        apoyar.setTextColor(blanco);
+        apoyar.setOnClickListener(v -> abrirDonacion());
         LinearLayout.LayoutParams apoiarParams =
                 new LinearLayout.LayoutParams(-2, dp(42));
         apoiarParams.gravity = Gravity.CENTER_HORIZONTAL;
         apoiarParams.topMargin = dp(2);
-        vista.addView(apoiar, apoiarParams);
+        vista.addView(apoyar, apoiarParams);
 
         portada = new ImageView(this);
         portada.setImageResource(R.drawable.aguara_cover);
