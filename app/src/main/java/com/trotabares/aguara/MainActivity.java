@@ -795,6 +795,8 @@ public class MainActivity extends Activity {
 
             try {
                 escanearRecursivamente(carpeta, encontrados);
+                runOnUiThread(() -> estadoCola.setText("🔎 Escaneo terminado: " + encontrados.size() + " canciones"));
+
 
                 Collections.sort(encontrados,
                         (a, b) -> a.toString().compareToIgnoreCase(b.toString())
