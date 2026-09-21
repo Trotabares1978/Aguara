@@ -33,6 +33,7 @@ public class MainActivity extends Activity {
     private Uri currentFolderUri;
     private final ArrayList<Uri> folderStack = new ArrayList<>();
     private final ArrayList<Uri> currentAudioList = new ArrayList<>();
+    private final ArrayList<Uri> playlistAudioList = new ArrayList<>();
     private int currentAudioIndex = -1;
 
     private TextView cancion;
@@ -270,6 +271,29 @@ public class MainActivity extends Activity {
                 n.endsWith(".aif");
     }
 
+    private void buscarAudiosRecursivamente(Uri carpeta, ArrayList<Uri> resultado) {
+        for (Uri elemento : obtenerElementosCarpeta(carpeta)) {
+            if (esCarpeta(elemento)) {
+                buscarAudiosRecursivamente(elemento, resultado);
+            } else if (esAudio(elemento)) {
+                resultado.add(elemento);
+            }
+        }
+    }
+
+    private void cargarCarpetaCompleta(Uri carpeta) {
+        playlistAudioList.clear();
+        buscarAudiosRecursivamente(carpeta, playlistAudioList);
+
+        Comparator<Uri> cmp=(a,b)->obtenerNombreElemento(a)
+                .compareToIgnoreCase(obtenerNombreElemento(b));
+        Collections.sort(playlistAudioList,cmp);
+
+        currentAudioList.clear();
+        currentAudioList.addAll(playlistAudioList);
+        currentAudioIndex=-1;
+    }
+
     private void mostrarCarpeta(Uri carpeta) {
         currentFolderUri=carpeta;
 
@@ -304,17 +328,17 @@ public class MainActivity extends Activity {
         lista.addView(barra);
 
         ArrayList<Uri> carpetas=new ArrayList<>();
-        currentAudioList.clear();
+        ArrayList<Uri> audiosEnEstaCarpeta=new ArrayList<>();
 
         for(Uri u:obtenerElementosCarpeta(carpeta)) {
             if(esCarpeta(u)) carpetas.add(u);
-            else if(esAudio(u)) currentAudioList.add(u);
+            else if(esAudio(u)) audiosEnEstaCarpeta.add(u);
         }
 
         Comparator<Uri> cmp=(a,b)->obtenerNombreElemento(a)
                 .compareToIgnoreCase(obtenerNombreElemento(b));
         Collections.sort(carpetas,cmp);
-        Collections.sort(currentAudioList,cmp);
+        Collections.sort(audiosEnEstaCarpeta,cmp);
 
         for(Uri u:carpetas) {
             TextView item=new TextView(this);
@@ -326,22 +350,32 @@ public class MainActivity extends Activity {
             lista.addView(item,new LinearLayout.LayoutParams(-1,dp(52)));
         }
 
-        for(int i=0;i<currentAudioList.size();i++) {
-            final int index=i; Uri u=currentAudioList.get(i);
+        for(int i=0;i<audiosEnEstaCarpeta.size();i++) {
+            final Uri u=audiosEnEstaCarpeta.get(i);
             TextView item=new TextView(this);
             item.setText("🎵  "+obtenerNombreElemento(u));
             item.setTextSize(16); item.setTextColor(Color.LTGRAY);
             item.setGravity(Gravity.CENTER_VERTICAL);
             item.setPadding(dp(12),dp(8),dp(8),dp(8));
             item.setOnClickListener(v->{
+                int index=playlistAudioList.indexOf(u);
+                if(index<0) {
+                    playlistAudioList.clear();
+                    playlistAudioList.add(u);
+                    currentAudioList.clear();
+                    currentAudioList.add(u);
+                    index=0;
+                }
+                currentAudioList.clear();
+                currentAudioList.addAll(playlistAudioList);
                 currentAudioIndex=index;
                 reproducirAudio(u);
             });
             lista.addView(item,new LinearLayout.LayoutParams(-1,dp(52)));
         }
 
-        if(carpetas.isEmpty() && currentAudioList.isEmpty()) {
-            TextView vacia = text("Esta carpeta no contiene música directamente.",17,gris);
+        if(carpetas.isEmpty() && audiosEnEstaCarpeta.isEmpty()) {
+            TextView vacia = text("Esta carpeta no contiene archivos de música directamente.",17,gris);
             vacia.setPadding(dp(10),dp(20),dp(10),dp(20));
             lista.addView(vacia,new LinearLayout.LayoutParams(-1,dp(70)));
         }
@@ -480,6 +514,7 @@ public class MainActivity extends Activity {
         if(requestCode==REQUEST_FOLDER || requestCode==REQUEST_FOLDER_FROM_OPEN) {
             guardarCarpeta(seleccion);
             folderStack.clear();
+            cargarCarpetaCompleta(seleccion);
             mostrarCarpeta(seleccion);
         }
     }
