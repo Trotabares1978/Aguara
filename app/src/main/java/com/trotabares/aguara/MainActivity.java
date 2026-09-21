@@ -3,6 +3,11 @@ package com.trotabares.aguara;
 import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.DocumentsContract;
+import android.database.Cursor;
+import android.widget.ScrollView;
+import java.util.ArrayList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
@@ -13,6 +18,10 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
+    private static final int REQUEST_FOLDER = 1001;
+    private Uri treeUri;
+    private Uri currentFolderUri;
+    private final ArrayList<Uri> folderStack = new ArrayList<>();
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
@@ -30,6 +39,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        android.content.SharedPreferences prefs = getSharedPreferences("aguara", MODE_PRIVATE);
+        String savedUri = prefs.getString("music_tree_uri", null);
+        if (savedUri != null) {
+            treeUri = Uri.parse(savedUri);
+            currentFolderUri = treeUri;
+        }
 
         int fondo = Color.rgb(18, 18, 18);
         int blanco = Color.WHITE;
@@ -109,7 +124,7 @@ public class MainActivity extends Activity {
         biblioteca.setText("🎵  BIBLIOTECA");
         biblioteca.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
             startActivityForResult(intent, 1001);
         });
         biblioteca.setTextColor(blanco);
@@ -120,5 +135,29 @@ public class MainActivity extends Activity {
         root.addView(biblioteca, bibliotecaParams);
 
         setContentView(root);
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri selectedFolder = data.getData();
+            treeUri = selectedFolder;
+
+            try {
+                getContentResolver().takePersistableUriPermission(
+                    selectedFolder,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+            } catch (Exception ignored) {
+            }
+
+            getSharedPreferences("aguara", MODE_PRIVATE)
+                .edit()
+                .putString("music_tree_uri", selectedFolder.toString())
+                .apply();
+
+            currentFolderUri = selectedFolder;
+        }
     }
 }
