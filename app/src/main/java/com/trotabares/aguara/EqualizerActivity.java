@@ -57,11 +57,6 @@ public class EqualizerActivity extends Activity {
         titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         root.addView(titulo, new LinearLayout.LayoutParams(-1, dp(52)));
 
-        root.addView(
-                text("DSP propio · 10 bandas · no depende del ecualizador del teléfono", 13, gris),
-                new LinearLayout.LayoutParams(-1, dp(44))
-        );
-
         LinearLayout presets = new LinearLayout(this);
         presets.setGravity(Gravity.CENTER);
 
