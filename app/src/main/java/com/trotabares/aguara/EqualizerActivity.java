@@ -20,6 +20,7 @@ public class EqualizerActivity extends Activity {
     private AguaraPcmPlayer player;
     private LinearLayout bandsLayout;
     private LinearLayout advancedLayout;
+    private ScrollView audioScroll;
     private SeekBar preampSeek;
     private SeekBar bassBoostSeek;
     private SeekBar tubeSeek;
@@ -100,6 +101,7 @@ public class EqualizerActivity extends Activity {
         root.addView(modos, new LinearLayout.LayoutParams(-1, dp(54)));
 
         ScrollView scroll = new ScrollView(this);
+        audioScroll = scroll;
         LinearLayout contenido = new LinearLayout(this);
         contenido.setOrientation(LinearLayout.VERTICAL);
         contenido.setPadding(0, dp(6), 0, dp(8));
@@ -320,6 +322,12 @@ public class EqualizerActivity extends Activity {
     private void mostrarModoAvanzado() {
         bandsLayout.setVisibility(View.VISIBLE);
         advancedLayout.setVisibility(View.VISIBLE);
+
+        // Lleva el contenido hasta AUDIO LAB para que el usuario
+        // vea inmediatamente que el modo avanzado agregó controles.
+        audioScroll.post(() ->
+                audioScroll.smoothScrollTo(0, advancedLayout.getTop())
+        );
     }
 
     private void agregarPreset(LinearLayout contenedor, String nombre, int tipo) {
