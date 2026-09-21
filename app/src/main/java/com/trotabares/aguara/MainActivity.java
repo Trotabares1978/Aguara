@@ -59,7 +59,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private Button favorito;
     private Button play;
     private SeekBar progreso;
-    private MediaPlayer reproductor;
+    private AguaraPcmPlayer reproductor;
 
     private PlaybackService playbackService;
     private boolean servicioConectado = false;
