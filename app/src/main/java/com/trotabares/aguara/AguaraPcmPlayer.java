@@ -103,6 +103,7 @@ public class AguaraPcmPlayer {
             }
 
             String mime = inputFormat.getString(MediaFormat.KEY_MIME);
+            inputFormat.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT);
             codec = MediaCodec.createDecoderByType(mime);
             codec.configure(inputFormat, null, null, 0);
             codec.start();
