@@ -10,7 +10,7 @@ android {
         applicationId 'com.trotabares.aguara'
         minSdk 26
         targetSdk 36
-        versionCode 0
+        versionCode 1
         versionName '0.2.0'
     }
 }
