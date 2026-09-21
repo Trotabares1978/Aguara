@@ -2,6 +2,7 @@ package com.trotabares.aguara;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
@@ -106,6 +107,11 @@ public class MainActivity extends Activity {
 
         Button biblioteca = new Button(this);
         biblioteca.setText("🎵  BIBLIOTECA");
+        biblioteca.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            startActivityForResult(intent, 1001);
+        });
         biblioteca.setTextColor(blanco);
 
         LinearLayout.LayoutParams bibliotecaParams =
