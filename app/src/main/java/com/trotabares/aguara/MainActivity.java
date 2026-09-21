@@ -149,16 +149,6 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         construirInterfazPrincipal();
 
-        Intent servicio = new Intent(this, PlaybackService.class);
-
-        startService(servicio);
-
-        bindService(
-                servicio,
-                conexionServicio,
-                BIND_AUTO_CREATE
-        );
-
         if (treeUri != null) {
             try {
                 getContentResolver().takePersistableUriPermission(
