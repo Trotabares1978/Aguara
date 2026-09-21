@@ -22,6 +22,8 @@ public class MainActivity extends Activity {
     private Uri treeUri;
     private Uri currentFolderUri;
     private final ArrayList<Uri> folderStack = new ArrayList<>();
+    private TextView cancion;
+    private TextView artista;
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
@@ -73,7 +75,7 @@ public class MainActivity extends Activity {
         root.addView(portada, new LinearLayout.LayoutParams(
                 dp(280), dp(280)));
 
-        TextView cancion = text("Ninguna canción", 23, blanco);
+        cancion = text("Ninguna canción", 23, blanco);
         cancion.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
         LinearLayout.LayoutParams cancionParams =
@@ -81,7 +83,7 @@ public class MainActivity extends Activity {
         cancionParams.topMargin = dp(18);
         root.addView(cancion, cancionParams);
 
-        TextView artista = text("Seleccioná música para comenzar", 15, gris);
+        artista = text("Seleccioná música para comenzar", 15, gris);
         root.addView(artista, new LinearLayout.LayoutParams(
                 -1, dp(30)));
 
@@ -166,6 +168,16 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 1002 && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri selectedAudio = data.getData();
+            String fileName = selectedAudio.getLastPathSegment();
+            if (fileName != null && fileName.contains(":")) {
+                fileName = fileName.substring(fileName.lastIndexOf(":") + 1);
+            }
+            cancion.setText(fileName);
+            artista.setText("Archivo seleccionado");
+        }
 
         if (requestCode == 1001 && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri selectedFolder = data.getData();
