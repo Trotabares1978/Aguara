@@ -227,11 +227,16 @@ public class MainActivity extends Activity {
         try {
             String id = DocumentsContract.getDocumentId(carpeta);
             Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(carpeta,id);
-            String[] projection = {DocumentsContract.Document.COLUMN_DOCUMENT_ID};
+            String[] projection = {
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE
+            };
             try(Cursor c=getContentResolver().query(children,projection,null,null,null)) {
                 if(c!=null) while(c.moveToNext()) {
+                    String childId = c.getString(0);
                     r.add(DocumentsContract.buildDocumentUriUsingTree(
-                            carpeta,c.getString(0)));
+                            carpeta,childId));
                 }
             }
         } catch(Exception ignored) {}
@@ -336,8 +341,9 @@ public class MainActivity extends Activity {
         }
 
         if(carpetas.isEmpty() && currentAudioList.isEmpty()) {
-            lista.addView(text("Esta carpeta no contiene música.",17,gris),
-                    new LinearLayout.LayoutParams(-1,dp(60)));
+            TextView vacia = text("Esta carpeta no contiene música directamente.",17,gris);
+            vacia.setPadding(dp(10),dp(20),dp(10),dp(20));
+            lista.addView(vacia,new LinearLayout.LayoutParams(-1,dp(70)));
         }
 
         ScrollView scroll=new ScrollView(this);
@@ -394,9 +400,29 @@ public class MainActivity extends Activity {
     }
 
     private void reproducirAnterior() {
-        if(currentAudioList.isEmpty() || currentAudioIndex<=0) return;
-        currentAudioIndex--;
-        reproducirAudio(currentAudioList.get(currentAudioIndex));
+        if (reproductor != null) {
+            try {
+                if (reproductor.getCurrentPosition() > 3000) {
+                    reproductor.seekTo(0);
+                    reproductor.start();
+                    play.setText("⏸");
+                    handler.post(actualizarProgreso);
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (currentAudioList.isEmpty()) {
+            return;
+        }
+
+        if (currentAudioIndex > 0) {
+            currentAudioIndex--;
+            reproducirAudio(currentAudioList.get(currentAudioIndex));
+        } else {
+            reproducirAudio(currentAudioList.get(0));
+            currentAudioIndex = 0;
+        }
     }
 
     private void reproducirSiguiente() {
@@ -445,7 +471,8 @@ public class MainActivity extends Activity {
 
         if(requestCode==REQUEST_AUDIO) {
             currentAudioList.clear();
-            currentAudioIndex=-1;
+            currentAudioList.add(seleccion);
+            currentAudioIndex=0;
             reproducirAudio(seleccion);
             return;
         }
