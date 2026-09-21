@@ -2,6 +2,10 @@ package com.trotabares.aguara;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.ComponentName;
@@ -26,6 +30,9 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
+import android.media.session.MediaSession;
+import android.media.MediaMetadata;
+import android.media.session.PlaybackState;
 import android.os.Handler;
 
 import java.util.ArrayList;
@@ -62,6 +69,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private Button play;
     private SeekBar progreso;
     private AguaraPcmPlayer reproductor;
+    private MediaSession mediaSession;
+    private static final int MEDIA_NOTIFICATION_ID = 2001;
 
     private PlaybackService playbackService;
     private boolean servicioConectado = false;
@@ -164,6 +173,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         }
 
         construirInterfazPrincipal();
+        configurarMediaSession();
 
         if (treeUri != null) {
             try {
@@ -177,6 +187,160 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 currentFolderUri = null;
             }
         }
+    }
+
+    private void configurarMediaSession() {
+        mediaSession = new MediaSession(this, "AGUARA");
+        mediaSession.setCallback(new MediaSession.Callback() {
+            @Override public void onPlay() {
+                if (reproductor != null && !reproductor.isPlaying()) {
+                    try { reproductor.start(); } catch (Exception ignored) {}
+                    if (play != null) play.setText("⏸");
+                    handler.post(actualizarProgreso);
+                    actualizarMediaSessionEstado();
+                }
+            }
+
+            @Override public void onPause() {
+                if (reproductor != null && reproductor.isPlaying()) {
+                    try { reproductor.pause(); } catch (Exception ignored) {}
+                    guardarUltimaPosicion();
+                    if (play != null) play.setText("▶");
+                    actualizarMediaSessionEstado();
+                }
+            }
+
+            @Override public void onSkipToPrevious() {
+                reproducirAnterior();
+            }
+
+            @Override public void onSkipToNext() {
+                reproducirSiguiente();
+            }
+
+            @Override public void onSeekTo(long pos) {
+                if (reproductor != null) {
+                    try { reproductor.seekTo((int) Math.max(0, pos)); } catch (Exception ignored) {}
+                    actualizarMediaSessionEstado();
+                }
+            }
+        });
+        mediaSession.setActive(false);
+        crearCanalMedia();
+    }
+
+    private void crearCanalMedia() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel canal = new NotificationChannel(
+                    "aguara_media", "AGUARÁ reproducción",
+                    NotificationManager.IMPORTANCE_LOW);
+            canal.setDescription("Controles de reproducción de AGUARÁ");
+            NotificationManager manager =
+                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (manager != null) manager.createNotificationChannel(canal);
+        }
+    }
+
+    private void actualizarMediaSessionMetadata() {
+        if (mediaSession == null || cancion == null) return;
+        String titulo = cancion.getText().toString();
+        String nombreArtista = artista != null ? artista.getText().toString() : "";
+        String nombreAlbum = album != null ? album.getText().toString() : "";
+
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, titulo)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, nombreArtista)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, nombreAlbum);
+
+        try {
+            Bitmap portadaBitmap = BitmapFactory.decodeResource(
+                    getResources(), R.drawable.aguara_cover);
+            if (portadaBitmap != null) {
+                metadata.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, portadaBitmap);
+            }
+        } catch (Exception ignored) {}
+
+        mediaSession.setMetadata(metadata.build());
+    }
+
+    private void actualizarMediaSessionEstado() {
+        if (mediaSession == null) return;
+
+        boolean reproduciendo = reproductor != null && reproductor.isPlaying();
+        long posicion = 0;
+        if (reproductor != null) {
+            try { posicion = Math.max(0, reproductor.getCurrentPosition()); }
+            catch (Exception ignored) {}
+        }
+
+        long acciones = PlaybackState.ACTION_PLAY
+                | PlaybackState.ACTION_PAUSE
+                | PlaybackState.ACTION_PLAY_PAUSE
+                | PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                | PlaybackState.ACTION_SKIP_TO_NEXT
+                | PlaybackState.ACTION_SEEK_TO;
+
+        int estado = reproduciendo
+                ? PlaybackState.STATE_PLAYING
+                : PlaybackState.STATE_PAUSED;
+
+        PlaybackState estadoPlayback = new PlaybackState.Builder()
+                .setActions(acciones)
+                .setState(estado, posicion, 1f)
+                .build();
+
+        mediaSession.setPlaybackState(estadoPlayback);
+        mediaSession.setActive(reproductor != null && audioActualUri != null);
+        actualizarNotificacionMedia();
+    }
+
+    private void actualizarNotificacionMedia() {
+        if (mediaSession == null || audioActualUri == null) return;
+
+        Intent abrir = new Intent(this, MainActivity.class);
+        abrir.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent abrirIntent = PendingIntent.getActivity(
+                this, 0, abrir,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Notification.Builder builder = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                ? new Notification.Builder(this, "aguara_media")
+                : new Notification.Builder(this);
+
+        builder.setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle(cancion != null ? cancion.getText() : "AGUARÁ")
+                .setContentText(artista != null ? artista.getText() : "Reproductor musical")
+                .setContentIntent(abrirIntent)
+                .setCategory(Notification.CATEGORY_TRANSPORT)
+                .setOngoing(reproductor != null && reproductor.isPlaying())
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setStyle(new Notification.MediaStyle()
+                        .setMediaSession(mediaSession.getSessionToken())
+                        .setShowActionsInCompactView(0, 1, 2))
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_media_previous, "Anterior",
+                        crearAccion("previous")).build())
+                .addAction(new Notification.Action.Builder(
+                        reproductor != null && reproductor.isPlaying()
+                                ? android.R.drawable.ic_media_pause
+                                : android.R.drawable.ic_media_play,
+                        reproductor != null && reproductor.isPlaying() ? "Pausa" : "Play",
+                        crearAccion(reproductor != null && reproductor.isPlaying() ? "pause" : "play")).build())
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_media_next, "Siguiente",
+                        crearAccion("next")).build());
+
+        NotificationManager manager =
+                (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager != null) manager.notify(MEDIA_NOTIFICATION_ID, builder.build());
+    }
+
+    private PendingIntent crearAccion(String accion) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setAction("com.trotabares.aguara.MEDIA_" + accion.toUpperCase(Locale.ROOT));
+        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return PendingIntent.getActivity(this, accion.hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     private void construirInterfazPrincipal() {
@@ -778,10 +942,14 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                     guardarUltimaPosicion();
                     mp.start();
                     play.setText("⏸");
+                    actualizarMediaSessionMetadata();
+                    actualizarMediaSessionEstado();
                     handler.removeCallbacks(actualizarProgreso);
                     handler.post(actualizarProgreso);
                 } else {
                     play.setText("▶");
+                    actualizarMediaSessionMetadata();
+                    actualizarMediaSessionEstado();
                 }
 
                 posicionReanudar = 0;
@@ -795,6 +963,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
             reproductor.setOnErrorListener((mp, what, extra) -> {
                 play.setText("▶");
+                actualizarMediaSessionEstado();
                 return false;
             });
 
@@ -838,10 +1007,12 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 reproductor.pause();
                 guardarUltimaPosicion();
                 play.setText("▶");
+                actualizarMediaSessionEstado();
             } else {
                 reproductor.start();
                 play.setText("⏸");
                 handler.post(actualizarProgreso);
+                actualizarMediaSessionEstado();
             }
         } catch (Exception ignored) {}
     }
@@ -886,6 +1057,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         } else {
             currentAudioIndex = -1;
             play.setText("▶");
+            actualizarMediaSessionEstado();
             if (estadoCola != null) estadoCola.setText("Fin de la cola");
         }
     }
@@ -966,6 +1138,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                             !artist.trim().isEmpty()) artista.setText(artist);
                     if (album != null && albumName != null &&
                             !albumName.trim().isEmpty()) album.setText(albumName);
+
+                    actualizarMediaSessionMetadata();
 
                     if (portada != null && artwork != null && artwork.length > 0) {
                         Bitmap bitmap = BitmapFactory.decodeByteArray(
@@ -1217,6 +1391,16 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             try { reproductor.release(); } catch (Exception ignored) {}
             reproductor = null;
         }
+
+        if (mediaSession != null) {
+            try { mediaSession.setActive(false); } catch (Exception ignored) {}
+            try { mediaSession.release(); } catch (Exception ignored) {}
+            mediaSession = null;
+        }
+
+        NotificationManager manager =
+                (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager != null) manager.cancel(MEDIA_NOTIFICATION_ID);
 
         super.onDestroy();
     }
