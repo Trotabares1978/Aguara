@@ -1,12 +1,15 @@
 package com.trotabares.aguara;
 
 import android.app.Activity;
+import android.media.audiofx.AudioEffect;
 import android.media.audiofx.Equalizer;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
 import android.widget.Button;
+import android.content.Intent;
+import android.app.AlertDialog;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -46,8 +49,20 @@ public class EqualizerActivity extends Activity {
         }
 
         try {
-            equalizer = new Equalizer(0, sessionId);
-            equalizer.setEnabled(true);
+            // Algunos teléfonos no exponen un motor Equalizer insertable
+            // para aplicaciones de terceros. Primero intentamos el efecto
+            // real sobre la sesión del MediaPlayer.
+            equalizer = new Equalizer(1000, sessionId);
+
+            if (!equalizer.hasControl()) {
+                throw new IllegalStateException("Sin control del efecto");
+            }
+
+            int resultado = equalizer.setEnabled(true);
+            if (resultado != AudioEffect.SUCCESS) {
+                throw new IllegalStateException("No se pudo activar el efecto: " + resultado);
+            }
+
             construirInterfaz();
         } catch (Exception e) {
             if (equalizer != null) {
@@ -57,7 +72,40 @@ public class EqualizerActivity extends Activity {
                 }
                 equalizer = null;
             }
+
+            abrirPanelNativo(sessionId);
+        }
+    }
+
+    private void abrirPanelNativo(int sessionId) {
+        try {
+            Intent intent = new Intent(
+                    AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL
+            );
+            intent.putExtra(
+                    AudioEffect.EXTRA_AUDIO_SESSION,
+                    sessionId
+            );
+            intent.putExtra(
+                    AudioEffect.EXTRA_PACKAGE_NAME,
+                    getPackageName()
+            );
+            intent.putExtra(
+                    AudioEffect.EXTRA_CONTENT_TYPE,
+                    AudioEffect.CONTENT_TYPE_MUSIC
+            );
+
+            startActivity(intent);
             finish();
+        } catch (Exception e) {
+            new AlertDialog.Builder(this)
+                    .setTitle("ECUALIZADOR")
+                    .setMessage(
+                            "Este dispositivo no ofrece un ecualizador de audio compatible con AGUARÁ." +
+                                    "\\n\\nNo se modificó la reproducción."
+                    )
+                    .setPositiveButton("OK", null)
+                    .show();
         }
     }
 
