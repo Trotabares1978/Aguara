@@ -448,38 +448,17 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         miniPlayer.setPadding(dp(12), dp(6), dp(8), dp(6));
         miniPlayer.setBackgroundColor(Color.rgb(30, 30, 30));
 
-        miniTitulo = text("", 13, blanco);
-        miniPlayer.addView(miniTitulo,
-                new LinearLayout.LayoutParams(0, dp(42), 1f));
-
-        miniPlay = new Button(this);
-        miniPlay.setText("▶");
-        miniPlay.setTextSize(18);
-        miniPlay.setTextColor(blanco);
-        miniPlay.setBackgroundColor(Color.TRANSPARENT);
-        miniPlay.setOnClickListener(v -> alternarReproduccion());
-        miniPlayer.addView(miniPlay,
-                new LinearLayout.LayoutParams(dp(52), dp(48)));
-
         Button miniAbrir = new Button(this);
-        miniAbrir.setText("📂");
-        miniAbrir.setTextSize(20);
+        miniAbrir.setText("📂  ABRIR");
+        miniAbrir.setTextSize(15);
         miniAbrir.setTextColor(blanco);
-        miniAbrir.setBackgroundColor(Color.TRANSPARENT);
         miniAbrir.setContentDescription("Abrir música o carpetas");
         miniAbrir.setOnClickListener(v -> mostrarDialogoAbrir());
-        miniPlayer.addView(miniAbrir,
-                new LinearLayout.LayoutParams(dp(52), dp(48)));
 
-        Button miniIrPlayer = new Button(this);
-        miniIrPlayer.setText("›");
-        miniIrPlayer.setTextSize(24);
-        miniIrPlayer.setTextColor(blanco);
-        miniIrPlayer.setBackgroundColor(Color.TRANSPARENT);
-        miniIrPlayer.setContentDescription("Ir al reproductor");
-        miniIrPlayer.setOnClickListener(v -> scrollPlayer());
-        miniPlayer.addView(miniIrPlayer,
-                new LinearLayout.LayoutParams(dp(44), dp(48)));
+        LinearLayout.LayoutParams abrirParams =
+                new LinearLayout.LayoutParams(-2, dp(48));
+        abrirParams.gravity = Gravity.CENTER;
+        miniPlayer.addView(miniAbrir, abrirParams);
 
         root.addView(miniPlayer,
                 new LinearLayout.LayoutParams(-1, dp(54)));
