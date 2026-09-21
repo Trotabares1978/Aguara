@@ -14,6 +14,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -127,6 +128,28 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         return t;
     }
 
+
+    private void estilizarBotonesPrincipales(ViewGroup grupo) {
+        for (int i = 0; i < grupo.getChildCount(); i++) {
+            View hijo = grupo.getChildAt(i);
+            if (hijo instanceof Button) {
+                Button boton = (Button) hijo;
+                GradientDrawable fondoBoton = new GradientDrawable();
+                fondoBoton.setShape(GradientDrawable.RECTANGLE);
+                fondoBoton.setColor(Color.rgb(35, 35, 35));
+                fondoBoton.setCornerRadius(dp(12));
+                fondoBoton.setStroke(dp(1), Color.rgb(75, 75, 75));
+                boton.setBackground(fondoBoton);
+                boton.setTextColor(blanco);
+                boton.setPadding(dp(6), 0, dp(6), 0);
+                boton.setMinHeight(0);
+                boton.setMinimumHeight(0);
+            } else if (hijo instanceof ViewGroup) {
+                estilizarBotonesPrincipales((ViewGroup) hijo);
+            }
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,6 +185,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         root.addView(construirReproductor(),
                 new LinearLayout.LayoutParams(-1, -1));
         setContentView(root);
+        estilizarBotonesPrincipales(root);
     }
 
     private LinearLayout construirReproductor() {
