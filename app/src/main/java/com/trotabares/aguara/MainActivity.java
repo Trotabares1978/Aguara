@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Random;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class MainActivity extends Activity {
 
@@ -43,6 +45,7 @@ public class MainActivity extends Activity {
     private TextView cancion;
     private TextView artista;
     private TextView estadoCola;
+    private Button favorito;
     private Button play;
     private SeekBar progreso;
     private MediaPlayer reproductor;
@@ -56,6 +59,11 @@ public class MainActivity extends Activity {
 
     private final Random random = new Random();
     private final Handler handler = new Handler();
+
+    private Uri audioActualUri;
+    private boolean actualEsFavorito = false;
+    private int posicionReanudar = 0;
+    private boolean reanudarDesdeGuardado = false;
 
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
@@ -152,6 +160,14 @@ public class MainActivity extends Activity {
                 artista,
                 new LinearLayout.LayoutParams(-1, dp(30))
         );
+
+        favorito = new Button(this);
+        favorito.setText("♡  FAVORITO");
+        favorito.setOnClickListener(v -> alternarFavoritoActual());
+        LinearLayout.LayoutParams fp =
+                new LinearLayout.LayoutParams(-1, dp(48));
+        fp.topMargin = dp(4);
+        vista.addView(favorito, fp);
 
         estadoCola = text("Sin cola cargada", 13, gris);
         vista.addView(
@@ -267,7 +283,32 @@ public class MainActivity extends Activity {
         ap.topMargin = dp(8);
         vista.addView(abrir, ap);
 
+        Button favoritosBtn = new Button(this);
+        favoritosBtn.setText("♥  FAVORITOS");
+        favoritosBtn.setOnClickListener(v -> mostrarFavoritos());
+        LinearLayout.LayoutParams fbp =
+                new LinearLayout.LayoutParams(-1, dp(52));
+        fbp.topMargin = dp(6);
+        vista.addView(favoritosBtn, fbp);
+
+        Button historialBtn = new Button(this);
+        historialBtn.setText("🕘  HISTORIAL");
+        historialBtn.setOnClickListener(v -> mostrarHistorial());
+        LinearLayout.LayoutParams hbp =
+                new LinearLayout.LayoutParams(-1, dp(52));
+        hbp.topMargin = dp(4);
+        vista.addView(historialBtn, hbp);
+
+        Button continuarBtn = new Button(this);
+        continuarBtn.setText("▶  CONTINUAR ESCUCHANDO");
+        continuarBtn.setOnClickListener(v -> continuarUltimaCancion());
+        LinearLayout.LayoutParams cbp =
+                new LinearLayout.LayoutParams(-1, dp(52));
+        cbp.topMargin = dp(4);
+        vista.addView(continuarBtn, cbp);
+
         actualizarTextoModos();
+        actualizarBotonFavorito();
 
         return vista;
     }
@@ -785,6 +826,13 @@ public class MainActivity extends Activity {
 
     private void reproducirAudio(Uri audio) {
         try {
+            audioActualUri = audio;
+
+            if (!reanudarDesdeGuardado) {
+                posicionReanudar = 0;
+            }
+            reanudarDesdeGuardado = false;
+
             if (reproductor != null) {
                 reproductor.release();
             }
@@ -794,9 +842,20 @@ public class MainActivity extends Activity {
 
             reproductor.setOnPreparedListener(mp -> {
                 progreso.setMax(mp.getDuration());
-                progreso.setProgress(0);
+
+                if (posicionReanudar > 0 &&
+                        posicionReanudar < mp.getDuration()) {
+                    mp.seekTo(posicionReanudar);
+                    progreso.setProgress(posicionReanudar);
+                } else {
+                    progreso.setProgress(0);
+                }
+
+                guardarEnHistorial(audioActualUri);
+                guardarUltimaPosicion();
 
                 mp.start();
+                posicionReanudar = 0;
                 play.setText("⏸");
 
                 handler.removeCallbacks(actualizarProgreso);
@@ -837,6 +896,7 @@ public class MainActivity extends Activity {
         try {
             if (reproductor.isPlaying()) {
                 reproductor.pause();
+                guardarUltimaPosicion();
                 play.setText("▶");
             } else {
                 reproductor.start();
@@ -970,6 +1030,8 @@ public class MainActivity extends Activity {
 
         cancion.setText(titulo);
         artista.setText(artistaNombre);
+        audioActualUri = audio;
+        actualizarBotonFavorito();
 
         if (estadoCola != null && !currentAudioList.isEmpty()) {
             int posicion = currentAudioIndex + 1;
@@ -977,6 +1039,228 @@ public class MainActivity extends Activity {
                     "Canción " + posicion + " de " + currentAudioList.size()
             );
         }
+    }
+
+    private Set<String> obtenerFavoritos() {
+        return new LinkedHashSet<>(
+                getSharedPreferences("aguara", MODE_PRIVATE)
+                        .getStringSet("favoritos", new LinkedHashSet<>())
+        );
+    }
+
+    private void guardarFavoritos(Set<String> favoritos) {
+        getSharedPreferences("aguara", MODE_PRIVATE)
+                .edit()
+                .putStringSet("favoritos", new LinkedHashSet<>(favoritos))
+                .apply();
+    }
+
+    private void alternarFavoritoActual() {
+        if (audioActualUri == null) {
+            return;
+        }
+
+        Set<String> favoritos = obtenerFavoritos();
+        String uri = audioActualUri.toString();
+
+        if (favoritos.contains(uri)) {
+            favoritos.remove(uri);
+        } else {
+            favoritos.add(uri);
+        }
+
+        guardarFavoritos(favoritos);
+        actualizarBotonFavorito();
+    }
+
+    private void actualizarBotonFavorito() {
+        if (favorito == null) {
+            return;
+        }
+
+        actualEsFavorito =
+                audioActualUri != null &&
+                obtenerFavoritos().contains(audioActualUri.toString());
+
+        favorito.setText(
+                actualEsFavorito
+                        ? "♥  FAVORITO"
+                        : "♡  FAVORITO"
+        );
+    }
+
+    private ArrayList<String> obtenerHistorial() {
+        String guardado = getSharedPreferences("aguara", MODE_PRIVATE)
+                .getString("historial", "");
+
+        ArrayList<String> historial = new ArrayList<>();
+
+        if (guardado == null || guardado.trim().isEmpty()) {
+            return historial;
+        }
+
+        String[] partes = guardado.split("\n");
+
+        for (String parte : partes) {
+            if (!parte.trim().isEmpty()) {
+                historial.add(parte);
+            }
+        }
+
+        return historial;
+    }
+
+    private void guardarEnHistorial(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+
+        ArrayList<String> historial = obtenerHistorial();
+        String valor = uri.toString();
+
+        historial.remove(valor);
+        historial.add(0, valor);
+
+        while (historial.size() > 50) {
+            historial.remove(historial.size() - 1);
+        }
+
+        getSharedPreferences("aguara", MODE_PRIVATE)
+                .edit()
+                .putString("historial", String.join("\n", historial))
+                .apply();
+    }
+
+    private void mostrarFavoritos() {
+        Set<String> favoritos = obtenerFavoritos();
+
+        if (favoritos.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("♥ FAVORITOS")
+                    .setMessage("Todavía no tenés canciones favoritas.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        ArrayList<String> uris = new ArrayList<>(favoritos);
+        String[] nombres = new String[uris.size()];
+
+        for (int i = 0; i < uris.size(); i++) {
+            nombres[i] = obtenerNombreElemento(Uri.parse(uris.get(i)));
+            if (nombres[i] == null || nombres[i].trim().isEmpty()) {
+                nombres[i] = "Audio";
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("♥ FAVORITOS")
+                .setItems(nombres, (dialog, which) -> {
+                    Uri uri = Uri.parse(uris.get(which));
+
+                    currentAudioList.clear();
+                    currentAudioList.add(uri);
+                    listaOriginal.clear();
+                    listaOriginal.add(uri);
+                    currentAudioIndex = 0;
+
+                    reproducirAudio(uri);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("CERRAR", null)
+                .show();
+    }
+
+    private void mostrarHistorial() {
+        ArrayList<String> historial = obtenerHistorial();
+
+        if (historial.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("🕘 HISTORIAL")
+                    .setMessage("Todavía no hay canciones reproducidas.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        String[] nombres = new String[historial.size()];
+
+        for (int i = 0; i < historial.size(); i++) {
+            nombres[i] = obtenerNombreElemento(Uri.parse(historial.get(i)));
+
+            if (nombres[i] == null || nombres[i].trim().isEmpty()) {
+                nombres[i] = "Audio";
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("🕘 HISTORIAL")
+                .setItems(nombres, (dialog, which) -> {
+                    Uri uri = Uri.parse(historial.get(which));
+
+                    currentAudioList.clear();
+                    currentAudioList.add(uri);
+                    listaOriginal.clear();
+                    listaOriginal.add(uri);
+                    currentAudioIndex = 0;
+
+                    reproducirAudio(uri);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("CERRAR", null)
+                .show();
+    }
+
+    private void guardarUltimaPosicion() {
+        if (audioActualUri == null || reproductor == null) {
+            return;
+        }
+
+        try {
+            getSharedPreferences("aguara", MODE_PRIVATE)
+                    .edit()
+                    .putString(
+                            "last_audio_uri",
+                            audioActualUri.toString()
+                    )
+                    .putInt(
+                            "last_position",
+                            Math.max(0, reproductor.getCurrentPosition())
+                    )
+                    .apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void continuarUltimaCancion() {
+        String uriGuardada =
+                getSharedPreferences("aguara", MODE_PRIVATE)
+                        .getString("last_audio_uri", null);
+
+        int posicion =
+                getSharedPreferences("aguara", MODE_PRIVATE)
+                        .getInt("last_position", 0);
+
+        if (uriGuardada == null || uriGuardada.trim().isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("CONTINUAR ESCUCHANDO")
+                    .setMessage("Todavía no hay una reproducción guardada.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        Uri uri = Uri.parse(uriGuardada);
+
+        currentAudioList.clear();
+        currentAudioList.add(uri);
+        listaOriginal.clear();
+        listaOriginal.add(uri);
+        currentAudioIndex = 0;
+
+        posicionReanudar = posicion;
+        reanudarDesdeGuardado = true;
+        reproducirAudio(uri);
     }
 
     private String[] obtenerInfoAudio(Uri uri) {
@@ -1053,6 +1337,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(actualizarProgreso);
+        guardarUltimaPosicion();
 
         if (reproductor != null) {
             try {
