@@ -475,7 +475,17 @@ public class MainActivity extends Activity {
         ArrayList<Uri> elementos = new ArrayList<>();
 
         try {
-            String id = DocumentsContract.getDocumentId(carpeta);
+            // ACTION_OPEN_DOCUMENT_TREE devuelve una Tree URI para la
+            // carpeta raíz. Para esa URI hay que obtener el ID con
+            // getTreeDocumentId(); para las carpetas hijas usamos
+            // getDocumentId(), porque son Document URI.
+            String id;
+
+            if (DocumentsContract.isTreeUri(carpeta)) {
+                id = DocumentsContract.getTreeDocumentId(carpeta);
+            } else {
+                id = DocumentsContract.getDocumentId(carpeta);
+            }
 
             Uri children =
                     DocumentsContract.buildChildDocumentsUriUsingTree(
