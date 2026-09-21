@@ -323,11 +323,13 @@ public class EqualizerActivity extends Activity {
         bandsLayout.setVisibility(View.VISIBLE);
         advancedLayout.setVisibility(View.VISIBLE);
 
-        // Lleva el contenido hasta AUDIO LAB para que el usuario
-        // vea inmediatamente que el modo avanzado agregó controles.
-        audioScroll.post(() ->
-                audioScroll.smoothScrollTo(0, advancedLayout.getTop())
-        );
+        // Primero dejamos que Android recalcule la posición real de
+        // AUDIO LAB al hacerse visible y recién después desplazamos.
+        advancedLayout.requestLayout();
+        audioScroll.postDelayed(() -> {
+            int destino = Math.max(0, advancedLayout.getTop());
+            audioScroll.smoothScrollTo(0, destino);
+        }, 120);
     }
 
     private void agregarPreset(LinearLayout contenedor, String nombre, int tipo) {
