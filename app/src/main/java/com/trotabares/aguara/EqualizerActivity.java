@@ -58,7 +58,7 @@ public class EqualizerActivity extends Activity {
         root.addView(titulo, new LinearLayout.LayoutParams(-1, dp(52)));
 
         root.addView(
-                text("DSP propio · 5 bandas · no depende del ecualizador del teléfono", 13, gris),
+                text("DSP propio · 10 bandas · no depende del ecualizador del teléfono", 13, gris),
                 new LinearLayout.LayoutParams(-1, dp(44))
         );
 
@@ -75,7 +75,7 @@ public class EqualizerActivity extends Activity {
         bandsLayout = new LinearLayout(this);
         bandsLayout.setOrientation(LinearLayout.VERTICAL);
 
-        String[] labels = {"60 Hz", "250 Hz", "1 kHz", "4 kHz", "12 kHz"};
+        String[] labels = {"31 Hz", "62 Hz", "125 Hz", "250 Hz", "500 Hz", "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz"};
 
         for (int band = 0; band < player.getBandCount(); band++) {
             final int banda = band;
