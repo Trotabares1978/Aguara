@@ -109,15 +109,6 @@ public class AguaraPcmPlayer {
     }
 
     private void guardarEcualizacion() {
-        android.content.SharedPreferences prefs =
-                context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
-        for (int i = 0; i < filters.length; i++) {
-            float gain = prefs.getFloat("eq_band_" + i, 0f);
-            filters[i].setGain(gain);
-        }
-    }
-
-    private void guardarEcualizacion() {
         android.content.SharedPreferences.Editor editor =
                 context.getSharedPreferences("aguara", Context.MODE_PRIVATE).edit();
         for (int i = 0; i < filters.length; i++) {
