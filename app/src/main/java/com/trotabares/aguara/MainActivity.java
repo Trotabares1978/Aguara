@@ -1126,7 +1126,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 reproductor.release();
             }
 
-            reproductor = new MediaPlayer();
+            reproductor = new AguaraPcmPlayer(this);
             reproductor.setDataSource(this, audio);
 
             reproductor.setOnPreparedListener(mp -> {
