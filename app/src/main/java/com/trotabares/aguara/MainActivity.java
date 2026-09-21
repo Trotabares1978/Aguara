@@ -696,28 +696,62 @@ public class MainActivity extends Activity {
         currentAudioList.clear();
         currentAudioIndex = -1;
 
-        escanearRecursivamente(carpeta, listaOriginal);
-
-        Comparator<Uri> cmp =
-                (a, b) -> obtenerNombreElemento(a)
-                        .compareToIgnoreCase(
-                                obtenerNombreElemento(b)
-                        );
-
-        Collections.sort(listaOriginal, cmp);
-        currentAudioList.addAll(listaOriginal);
-
-        if (modoAleatorio && !currentAudioList.isEmpty()) {
-            Collections.shuffle(currentAudioList, random);
+        if (estadoCola != null) {
+            estadoCola.setText("🔎 Analizando música...");
         }
 
-        if (!currentAudioList.isEmpty()) {
-            currentAudioIndex = 0;
-            reproducirAudio(currentAudioList.get(0));
-        }
+        new Thread(() -> {
+            ArrayList<Uri> encontrados = new ArrayList<>();
+
+            try {
+                escanearRecursivamente(carpeta, encontrados);
+
+                Comparator<Uri> cmp =
+                        (a, b) -> obtenerNombreElemento(a)
+                                .compareToIgnoreCase(
+                                        obtenerNombreElemento(b));
+
+                Collections.sort(encontrados, cmp);
+
+                runOnUiThread(() -> {
+                    listaOriginal.clear();
+                    listaOriginal.addAll(encontrados);
+
+                    currentAudioList.clear();
+                    currentAudioList.addAll(encontrados);
+
+                    if (modoAleatorio && !currentAudioList.isEmpty()) {
+                        Collections.shuffle(currentAudioList, random);
+                    }
+
+                    if (!currentAudioList.isEmpty()) {
+                        currentAudioIndex = 0;
+
+                        if (estadoCola != null) {
+                            estadoCola.setText(
+                                    currentAudioList.size() + " canciones cargadas"
+                            );
+                        }
+
+                        reproducirAudio(currentAudioList.get(0));
+                    } else {
+                        currentAudioIndex = -1;
+
+                        if (estadoCola != null) {
+                            estadoCola.setText("No se encontraron archivos de audio");
+                        }
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (estadoCola != null) {
+                        estadoCola.setText("Error al analizar la carpeta");
+                    }
+                });
+            }
+        }).start();
     }
-
-
 
     private void mostrarCarpeta(Uri carpeta) {
         currentFolderUri = carpeta;
