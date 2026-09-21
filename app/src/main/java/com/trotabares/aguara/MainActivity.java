@@ -193,15 +193,6 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         artista = text("Seleccioná música para comenzar", 15, gris);
         vista.addView(artista, new LinearLayout.LayoutParams(-1, dp(30)));
 
-        Button abrir = new Button(this);
-        abrir.setText("📂  ABRIR MÚSICA / CARPETAS");
-        abrir.setTextColor(blanco);
-        abrir.setOnClickListener(v -> mostrarDialogoAbrir());
-        LinearLayout.LayoutParams ap =
-                new LinearLayout.LayoutParams(-1, dp(56));
-        ap.topMargin = dp(8);
-        vista.addView(abrir, ap);
-
         estadoCola = text("Sin cola cargada", 13, gris);
         vista.addView(estadoCola,
                 new LinearLayout.LayoutParams(-1, dp(26)));
