@@ -71,6 +71,25 @@ public class AguaraPcmPlayer {
     public AguaraPcmPlayer(Context context) {
         this.context = context.getApplicationContext();
         activePlayer = this;
+        cargarEcualizacionGuardada();
+    }
+
+    private void cargarEcualizacionGuardada() {
+        android.content.SharedPreferences prefs =
+                context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
+        for (int i = 0; i < filters.length; i++) {
+            float gain = prefs.getFloat("eq_band_" + i, 0f);
+            filters[i].setGain(gain);
+        }
+    }
+
+    private void guardarEcualizacion() {
+        android.content.SharedPreferences.Editor editor =
+                context.getSharedPreferences("aguara", Context.MODE_PRIVATE).edit();
+        for (int i = 0; i < filters.length; i++) {
+            editor.putFloat("eq_band_" + i, filters[i].getGain());
+        }
+        editor.apply();
     }
 
     public static AguaraPcmPlayer getActivePlayer() {
@@ -419,6 +438,7 @@ public class AguaraPcmPlayer {
     public void setBandGain(int band, float gainDb) {
         if (band >= 0 && band < filters.length) {
             filters[band].setGain(gainDb);
+            guardarEcualizacion();
         }
     }
 
