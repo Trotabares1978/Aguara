@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -38,6 +39,18 @@ public class EqualizerActivity extends Activity {
         return t;
     }
 
+    private void estilizarBoton(Button boton) {
+        GradientDrawable fondoBoton = new GradientDrawable();
+        fondoBoton.setShape(GradientDrawable.RECTANGLE);
+        fondoBoton.setColor(Color.rgb(35, 35, 35));
+        fondoBoton.setCornerRadius(dp(12));
+        fondoBoton.setStroke(dp(1), Color.rgb(75, 75, 75));
+        boton.setBackground(fondoBoton);
+        boton.setPadding(dp(6), 0, dp(6), 0);
+        boton.setMinHeight(0);
+        boton.setMinimumHeight(0);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,12 +81,14 @@ public class EqualizerActivity extends Activity {
         Button simple = new Button(this);
         simple.setText("MODO SIMPLE");
         simple.setTextColor(blanco);
+        estilizarBoton(simple);
         simple.setOnClickListener(v -> mostrarModoSimple());
         modos.addView(simple, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         Button avanzado = new Button(this);
         avanzado.setText("MODO AVANZADO");
         avanzado.setTextColor(blanco);
+        estilizarBoton(avanzado);
         avanzado.setOnClickListener(v -> mostrarModoAvanzado());
         modos.addView(avanzado, new LinearLayout.LayoutParams(0, dp(48), 1f));
 
@@ -96,6 +111,7 @@ public class EqualizerActivity extends Activity {
         Button cerrar = new Button(this);
         cerrar.setText("CERRAR");
         cerrar.setTextColor(blanco);
+        estilizarBoton(cerrar);
         cerrar.setOnClickListener(v -> finish());
         root.addView(cerrar, new LinearLayout.LayoutParams(-1, dp(52)));
 
@@ -112,14 +128,23 @@ public class EqualizerActivity extends Activity {
         panel.addView(subtitulo, new LinearLayout.LayoutParams(-1, dp(38)));
 
         LinearLayout presets = new LinearLayout(this);
-        presets.setGravity(Gravity.CENTER);
+        presets.setOrientation(LinearLayout.VERTICAL);
 
-        agregarPreset(presets, "PLANO", 0);
-        agregarPreset(presets, "BAJOS", 1);
-        agregarPreset(presets, "VOZ", 2);
-        agregarPreset(presets, "ROCK", 3);
+        LinearLayout fila1 = new LinearLayout(this);
+        fila1.setGravity(Gravity.CENTER);
+        agregarPreset(fila1, "PLANO", 0);
+        agregarPreset(fila1, "BAJOS", 1);
+        agregarPreset(fila1, "VOZ", 2);
+        presets.addView(fila1, new LinearLayout.LayoutParams(-1, dp(50)));
 
-        panel.addView(presets, new LinearLayout.LayoutParams(-1, dp(52)));
+        LinearLayout fila2 = new LinearLayout(this);
+        fila2.setGravity(Gravity.CENTER);
+        agregarPreset(fila2, "ROCK", 3);
+        agregarPreset(fila2, "ACÚSTICO", 4);
+        agregarPreset(fila2, "LO-FI", 5);
+        presets.addView(fila2, new LinearLayout.LayoutParams(-1, dp(50)));
+
+        panel.addView(presets, new LinearLayout.LayoutParams(-1, dp(104)));
 
         String[] labels = {
                 "31 Hz", "62 Hz", "125 Hz", "250 Hz", "500 Hz",
@@ -193,13 +218,6 @@ public class EqualizerActivity extends Activity {
         agregarControl(panel, "VINILO · AMBIENTE", "0", "100", 0f, 100f,
                 player.getVinylAmount(), value -> player.setVinylAmount(value));
 
-        TextView nota = text(
-                "Válvula y vinilo son coloraciones DSP. El limitador protege la salida frente a picos.",
-                12, gris);
-        nota.setGravity(Gravity.CENTER);
-        nota.setPadding(0, dp(8), 0, dp(8));
-        panel.addView(nota, new LinearLayout.LayoutParams(-1, dp(54)));
-
         return panel;
     }
 
@@ -267,6 +285,8 @@ public class EqualizerActivity extends Activity {
         Button boton = new Button(this);
         boton.setText(nombre);
         boton.setTextSize(11);
+        boton.setTextColor(blanco);
+        estilizarBoton(boton);
         boton.setOnClickListener(v -> aplicarPreset(tipo));
 
         contenedor.addView(
@@ -279,10 +299,12 @@ public class EqualizerActivity extends Activity {
         if (player == null) return;
 
         float[][] presets = {
-                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                {4, 5, 4, 2, 0, -1, -1, -1, -2, -2},
-                {-2, -1, 0, 1, 3, 4, 3, 1, 0, -1},
-                {4, 3, 1, -1, -1, 1, 3, 4, 4, 3}
+                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},                         // Plano
+                {4, 5, 4, 2, 0, -1, -1, -1, -2, -2},                     // Bajos
+                {-2, -1, 0, 1, 3, 4, 3, 1, 0, -1},                       // Voz
+                {4, 3, 1, -1, -1, 1, 3, 4, 4, 3},                       // Rock
+                {1, 2, 1, 0, 1, 2, 2, 1, 0, -1},                       // Acústico
+                {3, 2, 0, -2, -1, 1, 3, 1, -2, -4}                      // Lo-Fi
         };
 
         float[] valores = presets[Math.max(0, Math.min(tipo, presets.length - 1))];
