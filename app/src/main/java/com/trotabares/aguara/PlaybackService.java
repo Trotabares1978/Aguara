@@ -34,6 +34,22 @@ public class PlaybackService extends Service {
 
     private final IBinder binder = new LocalBinder();
 
+    public interface PlaybackListener {
+        void onPlaybackPrepared(int duracion);
+        void onPlaybackCompleted();
+        void onPlaybackError();
+    }
+
+    private PlaybackListener playbackListener;
+
+    public void setPlaybackListener(PlaybackListener listener) {
+        playbackListener = listener;
+    }
+
+    public void quitarPlaybackListener() {
+        playbackListener = null;
+    }
+
     public class LocalBinder extends Binder {
         public PlaybackService getService() {
             return PlaybackService.this;
@@ -116,16 +132,41 @@ public class PlaybackService extends Service {
             );
 
             reproductor.setOnPreparedListener(
-                    mp -> mp.start()
+                    mp -> {
+                        if (playbackListener != null) {
+                            playbackListener.onPlaybackPrepared(
+                                    mp.getDuration()
+                            );
+                        }
+
+                        mp.start();
+                    }
             );
 
             reproductor.setOnCompletionListener(
-                    mp -> detenerReproduccion()
+                    mp -> {
+                        if (playbackListener != null) {
+                            playbackListener.onPlaybackCompleted();
+                        }
+                    }
+            );
+
+            reproductor.setOnErrorListener(
+                    (mp, what, extra) -> {
+                        if (playbackListener != null) {
+                            playbackListener.onPlaybackError();
+                        }
+                        return false;
+                    }
             );
 
             reproductor.prepareAsync();
 
         } catch (Exception e) {
+
+            if (playbackListener != null) {
+                playbackListener.onPlaybackError();
+            }
 
             detenerReproduccion();
         }

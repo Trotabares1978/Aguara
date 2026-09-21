@@ -34,7 +34,7 @@ import java.util.Random;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements PlaybackService.PlaybackListener {
 
     private static final int REQUEST_FOLDER = 1001;
     private static final int REQUEST_AUDIO = 1002;
@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
 
             playbackService = binder.getService();
             servicioConectado = true;
+            playbackService.setPlaybackListener(MainActivity.this);
         }
 
         @Override
@@ -1718,6 +1719,22 @@ public class MainActivity extends Activity {
                 mostrarCarpeta(seleccion);
             }
         }
+    }
+
+    @Override
+    public void onPlaybackPrepared(int duracion) {
+        progreso.setMax(duracion);
+        progreso.setProgress(0);
+    }
+
+    @Override
+    public void onPlaybackCompleted() {
+        reproducirSiguienteAutomatico();
+    }
+
+    @Override
+    public void onPlaybackError() {
+        play.setText("▶");
     }
 
     @Override
