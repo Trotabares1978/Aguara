@@ -107,6 +107,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private int posicionReanudar = 0;
     private boolean reanudarDesdeGuardado = false;
     private boolean iniciarReproduccionAlPreparar = true;
+    private boolean audioAbiertoExternamente = false;
 
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
@@ -198,11 +199,19 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         if (!Intent.ACTION_VIEW.equals(accion) || uri == null) return;
 
+        audioAbiertoExternamente = true;
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception ignored) {}
+
         currentAudioList.clear();
         currentAudioList.add(uri);
         listaOriginal.clear();
         listaOriginal.add(uri);
         currentAudioIndex = 0;
+        posicionReanudar = 0;
+        reanudarDesdeGuardado = false;
         iniciarReproduccionAlPreparar = true;
         reproducirAudio(uri);
     }
@@ -899,7 +908,12 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                                     currentAudioList.size() + " canciones cargadas");
                         }
 
-                        reproducirAudio(currentAudioList.get(currentAudioIndex));
+                        // Si Android nos abrió un archivo concreto, ese archivo manda.
+                        // No dejamos que la restauración de la carpeta reemplace la canción
+                        // que el usuario acaba de tocar.
+                        if (!audioAbiertoExternamente) {
+                            reproducirAudio(currentAudioList.get(currentAudioIndex));
+                        }
                     } else {
                         currentAudioIndex = -1;
                         if (estadoCola != null) {
