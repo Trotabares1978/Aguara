@@ -663,69 +663,87 @@ public class MainActivity extends Activity {
             Uri carpeta,
             ArrayList<Uri> destino) {
 
-        try {
-            String id;
+        Uri treeUri = carpeta;
 
-            if (DocumentsContract.isTreeUri(carpeta)) {
-                id = DocumentsContract.getTreeDocumentId(carpeta);
-            } else {
-                id = DocumentsContract.getDocumentId(carpeta);
-            }
+        if (!DocumentsContract.isTreeUri(treeUri)) {
+            return;
+        }
 
-            Uri children =
-                    DocumentsContract.buildChildDocumentsUriUsingTree(
-                            carpeta,
-                            id
+        ArrayList<Uri> pendientes = new ArrayList<>();
+        pendientes.add(carpeta);
+
+        while (!pendientes.isEmpty()) {
+            Uri actual = pendientes.remove(pendientes.size() - 1);
+
+            try {
+                String id;
+
+                if (DocumentsContract.isTreeUri(actual)) {
+                    id = DocumentsContract.getTreeDocumentId(actual);
+                } else {
+                    id = DocumentsContract.getDocumentId(actual);
+                }
+
+                Uri children =
+                        DocumentsContract.buildChildDocumentsUriUsingTree(
+                                treeUri,
+                                id
+                        );
+
+                String[] projection = {
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                };
+
+                try (Cursor cursor =
+                             getContentResolver().query(
+                                     children,
+                                     projection,
+                                     null,
+                                     null,
+                                     null)) {
+
+                    if (cursor == null) {
+                        continue;
+                    }
+
+                    int idIndex = cursor.getColumnIndex(
+                            DocumentsContract.Document.COLUMN_DOCUMENT_ID
                     );
 
-            String[] projection = {
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_MIME_TYPE,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
-            };
+                    int mimeIndex = cursor.getColumnIndex(
+                            DocumentsContract.Document.COLUMN_MIME_TYPE
+                    );
 
-            try (Cursor cursor =
-                         getContentResolver().query(
-                                 children,
-                                 projection,
-                                 null,
-                                 null,
-                                 null)) {
+                    int nameIndex = cursor.getColumnIndex(
+                            DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                    );
 
-                if (cursor == null) {
-                    return;
-                }
+                    while (cursor.moveToNext()) {
+                        String documentId = cursor.getString(idIndex);
+                        String mimeType = cursor.getString(mimeIndex);
+                        String nombre = cursor.getString(nameIndex);
 
-                int idIndex = cursor.getColumnIndex(
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID
-                );
-                int mimeIndex = cursor.getColumnIndex(
-                        DocumentsContract.Document.COLUMN_MIME_TYPE
-                );
-                int nameIndex = cursor.getColumnIndex(
-                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                );
+                        Uri elemento =
+                                DocumentsContract.buildDocumentUriUsingTree(
+                                        treeUri,
+                                        documentId
+                                );
 
-                while (cursor.moveToNext()) {
-                    String documentId = cursor.getString(idIndex);
-                    String mimeType = cursor.getString(mimeIndex);
-                    String nombre = cursor.getString(nameIndex);
-
-                    Uri elemento =
-                            DocumentsContract.buildDocumentUriUsingTree(
-                                    carpeta,
-                                    documentId
-                            );
-
-                    if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType)) {
-                        escanearRecursivamente(elemento, destino);
-                    } else if (nombre != null && esAudioPorNombre(nombre)) {
-                        destino.add(elemento);
+                        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType)) {
+                            pendientes.add(elemento);
+                        } else if (
+                                nombre != null &&
+                                esAudioPorNombre(nombre)
+                        ) {
+                            destino.add(elemento);
+                        }
                     }
                 }
-            }
 
-        } catch (Exception ignored) {
+            } catch (Exception ignored) {
+            }
         }
     }
 
