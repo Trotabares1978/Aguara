@@ -663,31 +663,28 @@ public class MainActivity extends Activity {
             Uri carpeta,
             ArrayList<Uri> destino) {
 
-        Uri treeUri = carpeta;
-
-        if (!DocumentsContract.isTreeUri(treeUri)) {
+        if (!DocumentsContract.isTreeUri(carpeta)) {
             return;
         }
 
-        ArrayList<Uri> pendientes = new ArrayList<>();
-        pendientes.add(carpeta);
+        final Uri treeUri = carpeta;
+
+        ArrayList<String> pendientes = new ArrayList<>();
+
+        String raizId =
+                DocumentsContract.getTreeDocumentId(treeUri);
+
+        pendientes.add(raizId);
 
         while (!pendientes.isEmpty()) {
-            Uri actual = pendientes.remove(pendientes.size() - 1);
+            String parentId =
+                    pendientes.remove(pendientes.size() - 1);
 
             try {
-                String id;
-
-                if (DocumentsContract.isTreeUri(actual)) {
-                    id = DocumentsContract.getTreeDocumentId(actual);
-                } else {
-                    id = DocumentsContract.getDocumentId(actual);
-                }
-
                 Uri children =
                         DocumentsContract.buildChildDocumentsUriUsingTree(
                                 treeUri,
-                                id
+                                parentId
                         );
 
                 String[] projection = {
@@ -721,22 +718,31 @@ public class MainActivity extends Activity {
                     );
 
                     while (cursor.moveToNext()) {
-                        String documentId = cursor.getString(idIndex);
-                        String mimeType = cursor.getString(mimeIndex);
-                        String nombre = cursor.getString(nameIndex);
+                        String documentId =
+                                cursor.getString(idIndex);
 
-                        Uri elemento =
-                                DocumentsContract.buildDocumentUriUsingTree(
-                                        treeUri,
-                                        documentId
-                                );
+                        String mimeType =
+                                cursor.getString(mimeIndex);
 
-                        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType)) {
-                            pendientes.add(elemento);
+                        String nombre =
+                                cursor.getString(nameIndex);
+
+                        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(
+                                mimeType)) {
+
+                            pendientes.add(documentId);
+
                         } else if (
                                 nombre != null &&
                                 esAudioPorNombre(nombre)
                         ) {
+
+                            Uri elemento =
+                                    DocumentsContract.buildDocumentUriUsingTree(
+                                            treeUri,
+                                            documentId
+                                    );
+
                             destino.add(elemento);
                         }
                     }
