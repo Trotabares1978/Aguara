@@ -381,6 +381,16 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         eqp.topMargin = dp(4);
         vista.addView(ecualizador, eqp);
 
+        Button apoyar = new Button(this);
+        apoyar.setText("☕  APOYAR AGUARÁ");
+        apoyar.setTextColor(blanco);
+        apoyar.setOnClickListener(v -> abrirDonacion());
+
+        LinearLayout.LayoutParams apoyarParams =
+                new LinearLayout.LayoutParams(-1, dp(50));
+        apoyarParams.topMargin = dp(4);
+        vista.addView(apoyar, apoyarParams);
+
         Button cola = new Button(this);
         cola.setText("☰  COLA");
         cola.setTextColor(blanco);
@@ -554,18 +564,10 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
 
     private void mostrarDialogoAbrir() {
-        boolean hayCarpetaGuardada = treeUri != null;
-
-        String[] opciones = hayCarpetaGuardada
-                ? new String[]{
-                        "🎵 Archivo de audio",
-                        "📂 Usar última carpeta",
-                        "📁 Elegir otra carpeta"
-                }
-                : new String[]{
-                        "🎵 Archivo de audio",
-                        "📂 Elegir carpeta"
-                };
+        String[] opciones = {
+                "🎵 Archivo de audio",
+                "📂 Explorar carpetas"
+        };
 
         new android.app.AlertDialog.Builder(this)
                 .setTitle("¿Qué querés abrir?")
@@ -583,14 +585,13 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                         return;
                     }
 
-                    if (hayCarpetaGuardada && which == 1) {
+                    if (treeUri != null) {
                         folderStack.clear();
                         currentFolderUri = treeUri;
-                        cargarCarpetaCompleta(treeUri);
-                        return;
+                        mostrarCarpeta(treeUri);
+                    } else {
+                        elegirCarpeta(REQUEST_FOLDER_FROM_OPEN);
                     }
-
-                    elegirCarpeta(REQUEST_FOLDER_FROM_OPEN);
                 })
                 .show();
     }
@@ -642,9 +643,17 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 id = DocumentsContract.getDocumentId(carpeta);
             }
 
+            Uri baseTree = DocumentsContract.isTreeUri(carpeta)
+                    ? carpeta
+                    : treeUri;
+
+            if (baseTree == null) {
+                return elementos;
+            }
+
             Uri children =
                     DocumentsContract.buildChildDocumentsUriUsingTree(
-                            carpeta,
+                            baseTree,
                             id
                     );
 
@@ -664,7 +673,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                     while (cursor.moveToNext()) {
                         elementos.add(
                                 DocumentsContract.buildDocumentUriUsingTree(
-                                        carpeta,
+                                        baseTree,
                                         cursor.getString(0)
                                 )
                         );
@@ -739,16 +748,23 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             Uri carpeta,
             ArrayList<Uri> destino) {
 
-        if (!DocumentsContract.isTreeUri(carpeta)) {
+        Uri baseTree = DocumentsContract.isTreeUri(carpeta)
+                ? carpeta
+                : treeUri;
+
+        if (baseTree == null) {
             return;
         }
 
-        final Uri treeUri = carpeta;
-
         ArrayList<String> pendientes = new ArrayList<>();
 
-        String raizId =
-                DocumentsContract.getTreeDocumentId(treeUri);
+        String raizId;
+
+        if (DocumentsContract.isTreeUri(carpeta)) {
+            raizId = DocumentsContract.getTreeDocumentId(carpeta);
+        } else {
+            raizId = DocumentsContract.getDocumentId(carpeta);
+        }
 
         pendientes.add(raizId);
 
@@ -759,7 +775,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             try {
                 Uri children =
                         DocumentsContract.buildChildDocumentsUriUsingTree(
-                                treeUri,
+                                baseTree,
                                 parentId
                         );
 
@@ -815,7 +831,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
                             Uri elemento =
                                     DocumentsContract.buildDocumentUriUsingTree(
-                                            treeUri,
+                                            baseTree,
                                             documentId
                                     );
 
@@ -1200,6 +1216,17 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             }
 
             play.setText("▶");
+        }
+    }
+
+    private void abrirDonacion() {
+        try {
+            Intent intent = new Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://link.mercadopago.com.ar/aguara")
+            );
+            startActivity(intent);
+        } catch (Exception ignored) {
         }
     }
 
