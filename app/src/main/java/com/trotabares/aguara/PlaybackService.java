@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Binder;
 import android.os.IBinder;
 
 public class PlaybackService extends Service {
@@ -30,6 +31,14 @@ public class PlaybackService extends Service {
             "audio_uri";
 
     private MediaPlayer reproductor;
+
+    private final IBinder binder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        public PlaybackService getService() {
+            return PlaybackService.this;
+        }
+    }
 
     @Override
     public void onCreate() {
@@ -93,7 +102,7 @@ public class PlaybackService extends Service {
         return START_STICKY;
     }
 
-    private void reproducir(Uri audio) {
+    public void reproducir(Uri audio) {
 
         detenerReproduccion();
 
@@ -122,7 +131,7 @@ public class PlaybackService extends Service {
         }
     }
 
-    private void pausar() {
+    public void pausar() {
 
         if (reproductor == null) {
             return;
@@ -138,7 +147,7 @@ public class PlaybackService extends Service {
         }
     }
 
-    private void reanudar() {
+    public void reanudar() {
 
         if (reproductor == null) {
             return;
@@ -154,7 +163,7 @@ public class PlaybackService extends Service {
         }
     }
 
-    private void detenerReproduccion() {
+    public void detenerReproduccion() {
 
         if (reproductor == null) {
             return;
@@ -171,6 +180,53 @@ public class PlaybackService extends Service {
         }
 
         reproductor = null;
+    }
+
+    public boolean estaReproduciendo() {
+        if (reproductor == null) {
+            return false;
+        }
+
+        try {
+            return reproductor.isPlaying();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public int obtenerPosicion() {
+        if (reproductor == null) {
+            return 0;
+        }
+
+        try {
+            return reproductor.getCurrentPosition();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public int obtenerDuracion() {
+        if (reproductor == null) {
+            return 0;
+        }
+
+        try {
+            return reproductor.getDuration();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public void buscar(int posicion) {
+        if (reproductor == null) {
+            return;
+        }
+
+        try {
+            reproductor.seekTo(Math.max(0, posicion));
+        } catch (Exception ignored) {
+        }
     }
 
     private void crearCanalNotificacion() {
@@ -251,6 +307,6 @@ public class PlaybackService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return binder;
     }
 }
