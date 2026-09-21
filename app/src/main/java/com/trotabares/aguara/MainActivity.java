@@ -16,6 +16,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.media.MediaMetadataRetriever;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_FOLDER = 1001;
@@ -28,6 +29,25 @@ public class MainActivity extends Activity {
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
+
+    private String[] obtenerInfoAudio(Uri uri) {
+        String titulo = null;
+        String artistaNombre = null;
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        try {
+            retriever.setDataSource(this, uri);
+            titulo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+            artistaNombre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+        } catch (Exception ignored) {
+        } finally {
+            try {
+                retriever.release();
+            } catch (Exception ignored) {
+            }
+        }
+        return new String[]{titulo, artistaNombre};
+    }
+
 
     private TextView text(String value, float size, int color) {
         TextView t = new TextView(this);
@@ -175,8 +195,27 @@ public class MainActivity extends Activity {
             if (fileName != null && fileName.contains(":")) {
                 fileName = fileName.substring(fileName.lastIndexOf(":") + 1);
             }
-            cancion.setText(fileName);
-            artista.setText("Archivo seleccionado");
+            if (fileName == null) {
+                fileName = "Audio";
+            }
+            int punto = fileName.lastIndexOf(".");
+            if (punto > 0) {
+                fileName = fileName.substring(0, punto);
+            }
+
+            String[] infoAudio = obtenerInfoAudio(selectedAudio);
+            String tituloAudio = infoAudio[0];
+            String artistaAudio = infoAudio[1];
+
+            if (tituloAudio == null || tituloAudio.trim().isEmpty()) {
+                tituloAudio = fileName;
+            }
+            if (artistaAudio == null || artistaAudio.trim().isEmpty()) {
+                artistaAudio = "Artista desconocido";
+            }
+
+            cancion.setText(tituloAudio);
+            artista.setText(artistaAudio);
         }
 
         if (requestCode == 1001 && resultCode == RESULT_OK && data != null && data.getData() != null) {
