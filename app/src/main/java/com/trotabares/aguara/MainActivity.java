@@ -174,6 +174,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         construirInterfazPrincipal();
         configurarMediaSession();
+        abrirAudioRecibido(getIntent());
 
         if (treeUri != null) {
             try {
@@ -187,6 +188,30 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 currentFolderUri = null;
             }
         }
+    }
+
+    private void abrirAudioRecibido(Intent intent) {
+        if (intent == null) return;
+
+        String accion = intent.getAction();
+        Uri uri = intent.getData();
+
+        if (!Intent.ACTION_VIEW.equals(accion) || uri == null) return;
+
+        currentAudioList.clear();
+        currentAudioList.add(uri);
+        listaOriginal.clear();
+        listaOriginal.add(uri);
+        currentAudioIndex = 0;
+        iniciarReproduccionAlPreparar = true;
+        reproducirAudio(uri);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        abrirAudioRecibido(intent);
     }
 
     private void configurarMediaSession() {
