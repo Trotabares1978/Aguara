@@ -55,6 +55,13 @@ public class AguaraPcmPlayer {
     private OnCompletionListener completionListener;
     private OnErrorListener errorListener;
 
+    private float preampDb = 0f;
+    private boolean limiterEnabled = true;
+    private float bassBoost = 0f;
+    private float tubeDrive = 0f;
+    private float vinylAmount = 0f;
+    private long noiseState = 0x1234ABCDL;
+
     private final BandFilter[] filters = new BandFilter[]{
             new BandFilter(31f),
             new BandFilter(62f),
@@ -75,6 +82,33 @@ public class AguaraPcmPlayer {
     }
 
     private void cargarEcualizacionGuardada() {
+        android.content.SharedPreferences prefs =
+                context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
+
+        preampDb = prefs.getFloat("advanced_preamp_db", 0f);
+        limiterEnabled = prefs.getBoolean("advanced_limiter", true);
+        bassBoost = prefs.getFloat("advanced_bass_boost", 0f);
+        tubeDrive = prefs.getFloat("advanced_tube_drive", 0f);
+        vinylAmount = prefs.getFloat("advanced_vinyl", 0f);
+
+        for (int i = 0; i < filters.length; i++) {
+            float gain = prefs.getFloat("eq_band_" + i, 0f);
+            filters[i].setGain(gain);
+        }
+    }
+
+    private void guardarAudioAvanzado() {
+        android.content.SharedPreferences.Editor editor =
+                context.getSharedPreferences("aguara", Context.MODE_PRIVATE).edit();
+        editor.putFloat("advanced_preamp_db", preampDb);
+        editor.putBoolean("advanced_limiter", limiterEnabled);
+        editor.putFloat("advanced_bass_boost", bassBoost);
+        editor.putFloat("advanced_tube_drive", tubeDrive);
+        editor.putFloat("advanced_vinyl", vinylAmount);
+        editor.apply();
+    }
+
+    private void guardarEcualizacion() {
         android.content.SharedPreferences prefs =
                 context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
         for (int i = 0; i < filters.length; i++) {
@@ -350,8 +384,31 @@ public class AguaraPcmPlayer {
             int channel = i % channelCount;
             float sample = pcm[i] / 32768.0f;
 
+            // Cadena DSP AGUARÁ: preamp -> EQ -> bass -> válvula -> vinilo -> limiter.
+            sample *= (float) Math.pow(10.0, preampDb / 20.0);
+
             for (BandFilter filter : filters) {
                 sample = filter.process(sample, channel);
+            }
+
+            if (bassBoost > 0f) {
+                float low = filters[0].process(sample, channel);
+                sample += low * (bassBoost / 12f) * 0.35f;
+            }
+
+            if (tubeDrive > 0f) {
+                float drive = 1f + tubeDrive * 7f;
+                sample = (float) Math.tanh(sample * drive) / (float) Math.tanh(drive);
+            }
+
+            if (vinylAmount > 0f) {
+                noiseState = noiseState * 1664525L + 1013904223L;
+                float noise = (((noiseState >>> 16) & 0x7fff) / 16384f) - 1f;
+                sample += noise * (vinylAmount / 100f) * 0.018f;
+            }
+
+            if (limiterEnabled) {
+                sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
             }
 
             if (sample > 1f) sample = 1f;
@@ -450,6 +507,51 @@ public class AguaraPcmPlayer {
 
     public int getBandCount() {
         return filters.length;
+    }
+
+    public float getPreampDb() {
+        return preampDb;
+    }
+
+    public void setPreampDb(float value) {
+        preampDb = Math.max(-12f, Math.min(12f, value));
+        guardarAudioAvanzado();
+    }
+
+    public boolean isLimiterEnabled() {
+        return limiterEnabled;
+    }
+
+    public void setLimiterEnabled(boolean enabled) {
+        limiterEnabled = enabled;
+        guardarAudioAvanzado();
+    }
+
+    public float getBassBoost() {
+        return bassBoost;
+    }
+
+    public void setBassBoost(float value) {
+        bassBoost = Math.max(0f, Math.min(12f, value));
+        guardarAudioAvanzado();
+    }
+
+    public float getTubeDrive() {
+        return tubeDrive;
+    }
+
+    public void setTubeDrive(float value) {
+        tubeDrive = Math.max(0f, Math.min(12f, value));
+        guardarAudioAvanzado();
+    }
+
+    public float getVinylAmount() {
+        return vinylAmount;
+    }
+
+    public void setVinylAmount(float value) {
+        vinylAmount = Math.max(0f, Math.min(100f, value));
+        guardarAudioAvanzado();
     }
 
     private void resetFilters() {
