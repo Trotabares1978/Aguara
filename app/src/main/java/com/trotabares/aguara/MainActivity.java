@@ -796,12 +796,9 @@ public class MainActivity extends Activity {
             try {
                 escanearRecursivamente(carpeta, encontrados);
 
-                Comparator<Uri> cmp =
-                        (a, b) -> obtenerNombreElemento(a)
-                                .compareToIgnoreCase(
-                                        obtenerNombreElemento(b));
-
-                Collections.sort(encontrados, cmp);
+                Collections.sort(encontrados,
+                        (a, b) -> a.toString().compareToIgnoreCase(b.toString())
+                );
 
                 runOnUiThread(() -> {
                     listaOriginal.clear();
