@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
@@ -44,6 +46,8 @@ public class MainActivity extends Activity {
 
     private TextView cancion;
     private TextView artista;
+    private TextView album;
+    private ImageView portada;
     private TextView estadoCola;
     private Button favorito;
     private Button play;
@@ -627,6 +631,25 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void ordenarListaActual() {
+        if (currentAudioList.isEmpty()) {
+            return;
+        }
+
+        Comparator<Uri> comparator = (a, b) -> {
+            String na = obtenerNombreElemento(a);
+            String nb = obtenerNombreElemento(b);
+
+            if (na == null) na = "";
+            if (nb == null) nb = "";
+
+            return na.compareToIgnoreCase(nb);
+        };
+
+        Collections.sort(currentAudioList, comparator);
+        currentAudioIndex = 0;
+    }
+
     private void cargarCarpetaCompleta(Uri carpeta) {
         listaOriginal.clear();
         currentAudioList.clear();
@@ -1000,46 +1023,93 @@ public class MainActivity extends Activity {
 
 
     private void actualizarDatosAudio(Uri audio) {
-        String nombre = obtenerNombreElemento(audio);
+        String fallback = obtenerNombreElemento(audio);
 
-        if (nombre == null ||
-                nombre.trim().isEmpty()) {
-            nombre = "Audio";
-        }
-
-        int punto = nombre.lastIndexOf(".");
-
-        if (punto > 0) {
-            nombre = nombre.substring(0, punto);
-        }
-
-        String[] info = obtenerInfoAudio(audio);
-
-        String titulo = info[0];
-        String artistaNombre = info[1];
-
-        if (titulo == null ||
-                titulo.trim().isEmpty()) {
-            titulo = nombre;
-        }
-
-        if (artistaNombre == null ||
-                artistaNombre.trim().isEmpty()) {
-            artistaNombre = "Artista desconocido";
-        }
-
-        cancion.setText(titulo);
-        artista.setText(artistaNombre);
-        audioActualUri = audio;
-        actualizarBotonFavorito();
-
-        if (estadoCola != null && !currentAudioList.isEmpty()) {
-            int posicion = currentAudioIndex + 1;
-            estadoCola.setText(
-                    "Canción " + posicion + " de " + currentAudioList.size()
+        if (cancion != null) {
+            cancion.setText(
+                    fallback == null || fallback.trim().isEmpty()
+                            ? "Audio"
+                            : fallback
             );
         }
+
+        if (artista != null) {
+            artista.setText("Desconocido");
+        }
+
+        if (album != null) {
+            album.setText("Álbum desconocido");
+        }
+
+        if (portada != null) {
+            portada.setImageDrawable(null);
+            portada.setVisibility(View.GONE);
+        }
+
+        new Thread(() -> {
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+
+            try {
+                mmr.setDataSource(this, audio);
+
+                String title = mmr.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_TITLE
+                );
+                String artist = mmr.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_ARTIST
+                );
+                String albumName = mmr.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_ALBUM
+                );
+                byte[] artwork = mmr.getEmbeddedPicture();
+
+                runOnUiThread(() -> {
+                    if (cancion != null &&
+                            title != null &&
+                            !title.trim().isEmpty()) {
+                        cancion.setText(title);
+                    }
+
+                    if (artista != null &&
+                            artist != null &&
+                            !artist.trim().isEmpty()) {
+                        artista.setText(artist);
+                    }
+
+                    if (album != null &&
+                            albumName != null &&
+                            !albumName.trim().isEmpty()) {
+                        album.setText(albumName);
+                    }
+
+                    if (portada != null &&
+                            artwork != null &&
+                            artwork.length > 0) {
+                        Bitmap bitmap =
+                                BitmapFactory.decodeByteArray(
+                                        artwork,
+                                        0,
+                                        artwork.length
+                                );
+
+                        if (bitmap != null) {
+                            portada.setImageBitmap(bitmap);
+                            portada.setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+
+            } catch (Exception ignored) {
+                // Los archivos sin metadatos siguen usando sus datos de respaldo.
+            } finally {
+                try {
+                    mmr.release();
+                } catch (Exception ignored) {
+                }
+            }
+        }).start();
     }
+
 
     private Set<String> obtenerFavoritos() {
         return new LinkedHashSet<>(
