@@ -20,6 +20,11 @@ public class EqualizerActivity extends Activity {
     private AguaraPcmPlayer player;
     private LinearLayout bandsLayout;
     private LinearLayout advancedLayout;
+    private SeekBar preampSeek;
+    private SeekBar bassBoostSeek;
+    private SeekBar tubeSeek;
+    private SeekBar vinylSeek;
+    private Switch limiterSwitch;
 
     private final int fondo = Color.rgb(18, 18, 18);
     private final int blanco = Color.WHITE;
@@ -107,6 +112,13 @@ public class EqualizerActivity extends Activity {
 
         scroll.addView(contenido);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        Button reset = new Button(this);
+        reset.setText("↺  RESETEAR AUDIO");
+        reset.setTextColor(blanco);
+        estilizarBoton(reset);
+        reset.setOnClickListener(v -> resetearAudio());
+        root.addView(reset, new LinearLayout.LayoutParams(-1, dp(48)));
 
         Button cerrar = new Button(this);
         cerrar.setText("CERRAR");
@@ -207,6 +219,7 @@ public class EqualizerActivity extends Activity {
         limiter.setChecked(player.isLimiterEnabled());
         limiter.setOnCheckedChangeListener((buttonView, isChecked) ->
                 player.setLimiterEnabled(isChecked));
+        limiterSwitch = limiter;
         panel.addView(limiter, new LinearLayout.LayoutParams(-1, dp(52)));
 
         agregarControl(panel, "BASS BOOST", "0", "12 dB", 0f, 12f,
@@ -262,6 +275,11 @@ public class EqualizerActivity extends Activity {
 
         panel.addView(seek, new LinearLayout.LayoutParams(-1, dp(48)));
 
+        if (nombre.equals("PREAMP")) preampSeek = seek;
+        else if (nombre.equals("BASS BOOST")) bassBoostSeek = seek;
+        else if (nombre.equals("VÁLVULA · DRIVE")) tubeSeek = seek;
+        else if (nombre.equals("VINILO · AMBIENTE")) vinylSeek = seek;
+
         TextView range = text(minimo + "                                      " + maximo, 11, gris);
         panel.addView(range, new LinearLayout.LayoutParams(-1, dp(24)));
     }
@@ -269,6 +287,29 @@ public class EqualizerActivity extends Activity {
     private String formatear(float value) {
         if (Math.abs(value) < 0.05f) return "0";
         return String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+
+    private void resetearAudio() {
+        if (player == null) return;
+
+        // Restablece absolutamente todos los parámetros de audio.
+        for (int i = 0; i < player.getBandCount(); i++) {
+            player.setBandGain(i, 0f);
+        }
+        player.setPreampDb(0f);
+        player.setBassBoost(0f);
+        player.setTubeDrive(0f);
+        player.setVinylAmount(0f);
+        player.setLimiterEnabled(false);
+
+        refrescarSliders();
+
+        if (preampSeek != null) preampSeek.setProgress(1200);
+        if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
+        if (tubeSeek != null) tubeSeek.setProgress(0);
+        if (vinylSeek != null) vinylSeek.setProgress(0);
+        if (limiterSwitch != null) limiterSwitch.setChecked(false);
     }
 
     private void mostrarModoSimple() {
