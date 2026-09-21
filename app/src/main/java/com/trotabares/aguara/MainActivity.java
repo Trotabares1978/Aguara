@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.content.Intent;
+import android.content.ComponentName;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.database.Cursor;
@@ -57,6 +60,33 @@ public class MainActivity extends Activity {
     private Button play;
     private SeekBar progreso;
     private MediaPlayer reproductor;
+
+    private PlaybackService playbackService;
+    private boolean servicioConectado = false;
+
+    private final ServiceConnection conexionServicio =
+            new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(
+                ComponentName name,
+                IBinder service) {
+
+            PlaybackService.LocalBinder binder =
+                    (PlaybackService.LocalBinder) service;
+
+            playbackService = binder.getService();
+            servicioConectado = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(
+                ComponentName name) {
+
+            servicioConectado = false;
+            playbackService = null;
+        }
+    };
 
     private Button aleatorio;
     private Button repetir;
@@ -117,6 +147,16 @@ public class MainActivity extends Activity {
         }
 
         construirInterfazPrincipal();
+
+        Intent servicio = new Intent(this, PlaybackService.class);
+
+        startService(servicio);
+
+        bindService(
+                servicio,
+                conexionServicio,
+                BIND_AUTO_CREATE
+        );
 
         if (treeUri != null) {
             try {
