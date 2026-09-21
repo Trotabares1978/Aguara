@@ -259,7 +259,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         miniPlayer.setPadding(dp(12), dp(6), dp(8), dp(6));
         miniPlayer.setBackgroundColor(Color.rgb(30, 30, 30));
 
-        miniTitulo = text("Sin canción", 13, blanco);
+        miniTitulo = text("", 13, blanco);
         miniPlayer.addView(miniTitulo,
                 new LinearLayout.LayoutParams(0, dp(42), 1f));
 
@@ -902,7 +902,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         if (miniPlayer == null || cancion == null) return;
 
         String titulo = cancion.getText().toString();
-        if (titulo.trim().isEmpty()) titulo = "Sin canción";
+        if (titulo.trim().isEmpty()) titulo = "";
         if (miniTitulo != null) miniTitulo.setText(titulo);
 
         if (miniPlay != null) {
