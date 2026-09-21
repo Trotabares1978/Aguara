@@ -250,16 +250,6 @@ public class MainActivity extends Activity {
         colaParams.topMargin = dp(4);
         vista.addView(cola, colaParams);
 
-        Button biblioteca = new Button(this);
-        biblioteca.setText("🎵  BIBLIOTECA");
-        biblioteca.setTextColor(blanco);
-        biblioteca.setOnClickListener(v -> abrirBiblioteca());
-
-        LinearLayout.LayoutParams bp =
-                new LinearLayout.LayoutParams(-1, dp(55));
-        bp.topMargin = dp(6);
-        vista.addView(biblioteca, bp);
-
         Button abrir = new Button(this);
         abrir.setText("📂  ABRIR");
         abrir.setTextColor(blanco);
@@ -407,15 +397,6 @@ public class MainActivity extends Activity {
     }
 
 
-
-    private void abrirBiblioteca() {
-        if (treeUri != null) {
-            folderStack.clear();
-            mostrarCarpeta(treeUri);
-        } else {
-            elegirCarpeta(REQUEST_FOLDER);
-        }
-    }
 
     private void mostrarDialogoAbrir() {
         new android.app.AlertDialog.Builder(this)
