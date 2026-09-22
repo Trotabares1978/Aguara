@@ -67,6 +67,11 @@ public class AguaraPcmPlayer {
     private int environmentMode = 0;
     private float[][] environmentDelay = new float[2][1];
     private int environmentIndex = 0;
+
+    // Estados del karaoke: reducción selectiva de la zona vocal del canal central.
+    private float karaokeLowState = 0f;
+    private float karaokeHighLowState = 0f;
+    private float karaokeReducedCenter = 0f;
     private long noiseState = 0x1234ABCDL;
 
     private final BandFilter[] filters = new BandFilter[]{
@@ -426,10 +431,12 @@ public class AguaraPcmPlayer {
             if (karaokeActive) {
                 int otherIndex = channel == 0 ? i + 1 : i - 1;
                 if (otherIndex >= 0 && otherIndex < samples) {
-                    float other = pcmBuffer[otherIndex] / 32768.0f;
-                    float center = (sample + other) * 0.5f;
-                    float amount = karaokeAmount / 100f;
-                    sample -= center * amount;
+                    if (channel == 0) {
+                        float other = pcmBuffer[otherIndex] / 32768.0f;
+                        float center = (sample + other) * 0.5f;
+                        karaokeReducedCenter = procesarCentroKaraoke(center);
+                    }
+                    sample -= karaokeReducedCenter;
                 }
             }
 
@@ -632,6 +639,9 @@ public class AguaraPcmPlayer {
     }
 
     private void resetAmbiente() {
+        karaokeLowState = 0f;
+        karaokeHighLowState = 0f;
+        karaokeReducedCenter = 0f;
         if (environmentDelay == null) return;
         for (int ch = 0; ch < environmentDelay.length; ch++) {
             java.util.Arrays.fill(environmentDelay[ch], 0f);
@@ -639,11 +649,35 @@ public class AguaraPcmPlayer {
         environmentIndex = 0;
     }
 
+    private float procesarCentroKaraoke(float center) {
+        float amount = karaokeAmount / 100f;
+
+        // Separa aproximadamente graves / medios / agudos del canal central.
+        // La zona media es donde suele concentrarse la voz principal.
+        float alphaLow = (float) Math.exp(-2.0 * Math.PI * 180.0 / Math.max(1, sampleRate));
+        float alphaHigh = (float) Math.exp(-2.0 * Math.PI * 4200.0 / Math.max(1, sampleRate));
+
+        karaokeLowState = alphaLow * karaokeLowState + (1f - alphaLow) * center;
+        karaokeHighLowState = alphaHigh * karaokeHighLowState + (1f - alphaHigh) * center;
+
+        float low = karaokeLowState;
+        float high = center - karaokeHighLowState;
+        float mid = center - low - high;
+
+        // En medios vocales la reducción es algo más fuerte; fuera de ellos
+        // conservamos más música para que el karaoke suene menos destruido.
+        float midReduction = Math.min(1f, amount * 1.15f);
+        float edgeReduction = amount * 0.22f;
+        return low * edgeReduction + mid * midReduction + high * edgeReduction;
+    }
+
     private float procesarAmbiente(float dry, int channel) {
         if (environmentDelay == null || environmentDelay[0].length < 2) return dry;
 
-        float[] perfilMix = {0f, 0.10f, 0.16f, 0.20f, 0.24f, 0.28f};
-        float[] perfilFeedback = {0f, 0.12f, 0.20f, 0.27f, 0.34f, 0.40f};
+        // Perfiles deliberadamente más audibles que la primera versión,
+        // pero sin convertir cada ambiente en una reverberación embarrada.
+        float[] perfilMix = {0f, 0.15f, 0.23f, 0.30f, 0.36f, 0.42f};
+        float[] perfilFeedback = {0f, 0.14f, 0.23f, 0.31f, 0.40f, 0.48f};
         int[] baseMs = {0, 18, 32, 48, 62, 82};
         int delaySamples = Math.max(1, Math.min(
                 environmentDelay[0].length - 1,
