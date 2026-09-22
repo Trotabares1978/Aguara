@@ -369,7 +369,12 @@ public class EqualizerActivity extends Activity {
 
         refrescarSliders();
         actualizarEstadoGuazu();
-        actualizarEstadoKaraoke();
+        // El botón de Karaoke también debe volver explícitamente a su estado visual inactivo.
+        if (karaokeButton != null) {
+            karaokeButton.setText("KARAOKE");
+            karaokeButton.setSelected(false);
+            karaokeButton.setActivated(false);
+        }
 
         if (preampSeek != null) preampSeek.setProgress(1200);
         if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
