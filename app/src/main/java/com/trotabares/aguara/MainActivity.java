@@ -32,6 +32,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.media.AudioManager;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.session.MediaSession;
 import android.media.MediaMetadata;
 import android.media.session.PlaybackState;
@@ -117,6 +118,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     // vuelve a continuar cuando recupera el foco.
     private AudioManager audioManager;
     private AudioManager.OnAudioFocusChangeListener audioFocusListener;
+    private AudioFocusRequest audioFocusRequest;
     private boolean pausaPorOtraApp = false;
 
     private final Runnable actualizarProgreso = new Runnable() {
@@ -268,13 +270,14 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build();
-            android.media.AudioFocusRequest solicitud =
-                    new android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            audioFocusRequest =
+                    new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                             .setAudioAttributes(atributos)
+                            .setWillPauseWhenDucked(true)
                             .setAcceptsDelayedFocusGain(false)
                             .setOnAudioFocusChangeListener(audioFocusListener)
                             .build();
-            return audioManager.requestAudioFocus(solicitud)
+            return audioManager.requestAudioFocus(audioFocusRequest)
                     == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
         }
 
@@ -286,9 +289,15 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     }
 
     private void abandonarFocoAudio() {
-        if (audioManager != null && audioFocusListener != null) {
-            try { audioManager.abandonAudioFocus(audioFocusListener); } catch (Exception ignored) {}
-        }
+        if (audioManager == null || audioFocusListener == null) return;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                    && audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            } else {
+                audioManager.abandonAudioFocus(audioFocusListener);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void configurarMediaSession() {
@@ -1059,6 +1068,11 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 guardarEnHistorial(audioActualUri);
 
                 if (iniciarReproduccionAlPreparar) {
+                    if (!pedirFocoAudio()) {
+                        play.setText("▶");
+                        actualizarMediaSessionEstado();
+                        return;
+                    }
                     guardarUltimaPosicion();
                     mp.start();
                     play.setText("⏸");
@@ -1131,6 +1145,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 play.setText("▶");
                 actualizarMediaSessionEstado();
             } else {
+                if (!pedirFocoAudio()) return;
                 reproductor.start();
                 play.setText("⏸");
                 handler.post(actualizarProgreso);
