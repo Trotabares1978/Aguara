@@ -427,7 +427,7 @@ public class EqualizerActivity extends Activity {
             View vista = fila.getChildAt(i);
             if (vista instanceof Button) {
                 Button boton = (Button) vista;
-                boolean activo = i == player.getEnvironmentMode();
+                boolean activo = !player.isGuazuMode() && i == player.getEnvironmentMode();
                 boton.setText((activo ? "✓ " : "") + new String[]{"SECO", "SALA", "TEATRO", "CONCIERTO", "AIRE LIBRE", "ESTADIO"}[i]);
             }
         }
