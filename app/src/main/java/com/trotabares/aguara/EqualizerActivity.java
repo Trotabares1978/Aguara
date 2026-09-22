@@ -262,9 +262,15 @@ public class EqualizerActivity extends Activity {
         guazu.setTextColor(blanco);
         estilizarBoton(guazu);
         guazu.setOnClickListener(v -> {
-            player.aplicarModoGuazu();
-            guazu.setText("✓ 🐆 MODO GUAZÚ");
+            if (player.isGuazuMode()) {
+                player.desactivarModoGuazu();
+                guazu.setText("🐆 MODO GUAZÚ");
+            } else {
+                player.aplicarModoGuazu();
+                guazu.setText("✓ 🐆 MODO GUAZÚ");
+            }
             actualizarBotonesAmbiente(filaAmbientes);
+            refrescarSliders();
             refrescarSlidersAvanzados();
         });
         panel.addView(guazu, new LinearLayout.LayoutParams(-1, dp(52)));
