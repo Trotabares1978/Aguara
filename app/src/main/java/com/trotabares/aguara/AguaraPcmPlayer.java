@@ -657,6 +657,8 @@ public class AguaraPcmPlayer {
         float wet = own[read] * 0.72f + other[read] * 0.28f;
         float feedback = perfilFeedback[environmentMode];
         own[environmentIndex] = dry + wet * feedback;
+        environmentIndex++;
+        if (environmentIndex >= own.length) environmentIndex = 0;
 
         float mix = perfilMix[environmentMode];
         return dry * (1f - mix) + wet * mix;
