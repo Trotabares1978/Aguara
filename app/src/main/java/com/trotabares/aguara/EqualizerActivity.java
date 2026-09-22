@@ -26,6 +26,7 @@ public class EqualizerActivity extends Activity {
     private SeekBar tubeSeek;
     private SeekBar vinylSeek;
     private Switch limiterSwitch;
+    private Button karaokeButton;
 
     private final int fondo = Color.rgb(18, 18, 18);
     private final int blanco = Color.WHITE;
@@ -281,6 +282,7 @@ public class EqualizerActivity extends Activity {
         panel.addView(karaokeTitulo, new LinearLayout.LayoutParams(-1, dp(42)));
 
         Button karaoke = new Button(this);
+        karaokeButton = karaoke;
         karaoke.setText(player.getKaraokeAmount() > 0.5f ? "✓ KARAOKE" : "KARAOKE");
         karaoke.setTextColor(blanco);
         estilizarBoton(karaoke);
@@ -367,6 +369,7 @@ public class EqualizerActivity extends Activity {
 
         refrescarSliders();
         actualizarEstadoGuazu();
+        actualizarEstadoKaraoke();
 
         if (preampSeek != null) preampSeek.setProgress(1200);
         if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
@@ -452,6 +455,12 @@ public class EqualizerActivity extends Activity {
                     break;
                 }
             }
+        }
+    }
+
+    private void actualizarEstadoKaraoke() {
+        if (karaokeButton != null && player != null) {
+            karaokeButton.setText(player.getKaraokeAmount() > 0.5f ? "✓ KARAOKE" : "KARAOKE");
         }
     }
 
