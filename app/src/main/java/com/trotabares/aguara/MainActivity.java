@@ -225,6 +225,10 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
     private void configurarMediaSession() {
         mediaSession = new MediaSession(this, "AGUARA");
+        mediaSession.setFlags(
+                MediaSession.FLAG_HANDLES_MEDIA_BUTTONS
+                        | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+        );
         mediaSession.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() {
                 if (reproductor != null && !reproductor.isPlaying()) {
