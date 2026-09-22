@@ -654,8 +654,8 @@ public class AguaraPcmPlayer {
 
         // Separa aproximadamente graves / medios / agudos del canal central.
         // La zona media es donde suele concentrarse la voz principal.
-        float alphaLow = (float) Math.exp(-2.0 * Math.PI * 180.0 / Math.max(1, sampleRate));
-        float alphaHigh = (float) Math.exp(-2.0 * Math.PI * 4200.0 / Math.max(1, sampleRate));
+        float alphaLow = (float) Math.exp(-2.0 * Math.PI * 120.0 / Math.max(1, sampleRate));
+        float alphaHigh = (float) Math.exp(-2.0 * Math.PI * 6000.0 / Math.max(1, sampleRate));
 
         karaokeLowState = alphaLow * karaokeLowState + (1f - alphaLow) * center;
         karaokeHighLowState = alphaHigh * karaokeHighLowState + (1f - alphaHigh) * center;
@@ -666,8 +666,8 @@ public class AguaraPcmPlayer {
 
         // En medios vocales la reducción es algo más fuerte; fuera de ellos
         // conservamos más música para que el karaoke suene menos destruido.
-        float midReduction = Math.min(1f, amount * 1.15f);
-        float edgeReduction = amount * 0.22f;
+        float midReduction = Math.min(1f, amount);
+        float edgeReduction = amount * 0.70f;
         return low * edgeReduction + mid * midReduction + high * edgeReduction;
     }
 
