@@ -25,6 +25,7 @@ public class EqualizerActivity extends Activity {
     private SeekBar bassBoostSeek;
     private SeekBar tubeSeek;
     private SeekBar vinylSeek;
+    private SeekBar karaokeSeek;
     private Switch limiterSwitch;
 
     private final int fondo = Color.rgb(18, 18, 18);
@@ -233,6 +234,38 @@ public class EqualizerActivity extends Activity {
         agregarControl(panel, "VINILO · AMBIENTE", "0", "100", 0f, 100f,
                 player.getVinylAmount(), value -> player.setVinylAmount(value));
 
+        TextView ambientes = text("AMBIENTES ESPACIALES", 18, blanco);
+        ambientes.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        ambientes.setGravity(Gravity.CENTER_VERTICAL);
+        panel.addView(ambientes, new LinearLayout.LayoutParams(-1, dp(42)));
+
+        LinearLayout filaAmbientes = new LinearLayout(this);
+        filaAmbientes.setGravity(Gravity.CENTER);
+        String[] nombresAmbiente = {"SECO", "SALA", "TEATRO", "CONCIERTO", "AIRE LIBRE", "ESTADIO"};
+        for (int i = 0; i < nombresAmbiente.length; i++) {
+            final int modo = i;
+            Button boton = new Button(this);
+            boton.setText(nombresAmbiente[i]);
+            boton.setTextSize(9);
+            boton.setTextColor(blanco);
+            estilizarBoton(boton);
+            boton.setOnClickListener(v -> {
+                player.setEnvironmentMode(modo);
+                actualizarBotonesAmbiente(filaAmbientes);
+            });
+            filaAmbientes.addView(boton, new LinearLayout.LayoutParams(0, dp(52), 1f));
+        }
+        panel.addView(filaAmbientes, new LinearLayout.LayoutParams(-1, dp(58)));
+        actualizarBotonesAmbiente(filaAmbientes);
+
+        TextView karaokeTitulo = text("KARAOKE LOCAL", 18, blanco);
+        karaokeTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        karaokeTitulo.setGravity(Gravity.CENTER_VERTICAL);
+        panel.addView(karaokeTitulo, new LinearLayout.LayoutParams(-1, dp(42)));
+
+        agregarControl(panel, "REDUCCIÓN DE VOZ", "0", "100", 0f, 100f,
+                player.getKaraokeAmount(), value -> player.setKaraokeAmount(value));
+
         return panel;
     }
 
@@ -281,6 +314,7 @@ public class EqualizerActivity extends Activity {
         else if (nombre.equals("BASS BOOST")) bassBoostSeek = seek;
         else if (nombre.equals("VÁLVULA · DRIVE")) tubeSeek = seek;
         else if (nombre.equals("VINILO · AMBIENTE")) vinylSeek = seek;
+        else if (nombre.equals("REDUCCIÓN DE VOZ")) karaokeSeek = seek;
 
         TextView range = text(minimo + "                                      " + maximo, 11, gris);
         panel.addView(range, new LinearLayout.LayoutParams(-1, dp(24)));
@@ -303,6 +337,8 @@ public class EqualizerActivity extends Activity {
         player.setBassBoost(0f);
         player.setTubeDrive(0f);
         player.setVinylAmount(0f);
+        player.setKaraokeAmount(0f);
+        player.setEnvironmentMode(0);
         player.setLimiterEnabled(false);
 
         refrescarSliders();
@@ -311,6 +347,7 @@ public class EqualizerActivity extends Activity {
         if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
         if (tubeSeek != null) tubeSeek.setProgress(0);
         if (vinylSeek != null) vinylSeek.setProgress(0);
+        if (karaokeSeek != null) karaokeSeek.setProgress(0);
         if (limiterSwitch != null) limiterSwitch.setChecked(false);
     }
 
@@ -365,6 +402,18 @@ public class EqualizerActivity extends Activity {
         }
 
         refrescarSliders();
+    }
+
+    private void actualizarBotonesAmbiente(LinearLayout fila) {
+        if (fila == null || player == null) return;
+        for (int i = 0; i < fila.getChildCount(); i++) {
+            View vista = fila.getChildAt(i);
+            if (vista instanceof Button) {
+                Button boton = (Button) vista;
+                boolean activo = i == player.getEnvironmentMode();
+                boton.setText((activo ? "✓ " : "") + new String[]{"SECO", "SALA", "TEATRO", "CONCIERTO", "AIRE LIBRE", "ESTADIO"}[i]);
+            }
+        }
     }
 
     private void refrescarSliders() {
