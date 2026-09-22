@@ -639,6 +639,13 @@ public class AguaraPcmPlayer {
         guardarAudioAvanzado();
     }
 
+    public void desactivarModoGuazu() {
+        guazuMode = false;
+        environmentMode = 0;
+        resetAmbiente();
+        guardarAudioAvanzado();
+    }
+
     public int getEnvironmentMode() {
         return environmentMode;
     }
