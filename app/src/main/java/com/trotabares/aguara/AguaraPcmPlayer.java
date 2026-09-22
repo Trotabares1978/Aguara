@@ -63,6 +63,10 @@ public class AguaraPcmPlayer {
     private float bassBoost = 0f;
     private float tubeDrive = 0f;
     private float vinylAmount = 0f;
+    private float karaokeAmount = 0f;
+    private int environmentMode = 0;
+    private float[][] environmentDelay = new float[2][1];
+    private int environmentIndex = 0;
     private long noiseState = 0x1234ABCDL;
 
     private final BandFilter[] filters = new BandFilter[]{
@@ -93,6 +97,8 @@ public class AguaraPcmPlayer {
         bassBoost = prefs.getFloat("advanced_bass_boost", 0f);
         tubeDrive = prefs.getFloat("advanced_tube_drive", 0f);
         vinylAmount = prefs.getFloat("advanced_vinyl", 0f);
+        karaokeAmount = prefs.getFloat("advanced_karaoke", 0f);
+        environmentMode = prefs.getInt("advanced_environment", 0);
 
         for (int i = 0; i < filters.length; i++) {
             float gain = prefs.getFloat("eq_band_" + i, 0f);
@@ -108,6 +114,8 @@ public class AguaraPcmPlayer {
         editor.putFloat("advanced_bass_boost", bassBoost);
         editor.putFloat("advanced_tube_drive", tubeDrive);
         editor.putFloat("advanced_vinyl", vinylAmount);
+        editor.putFloat("advanced_karaoke", karaokeAmount);
+        editor.putInt("advanced_environment", environmentMode);
         editor.apply();
     }
 
@@ -346,6 +354,7 @@ public class AguaraPcmPlayer {
             filter.configure(sampleRate);
         }
         bassFilter.configure(sampleRate);
+        configurarAmbiente();
     }
 
     private void performPendingSeek() {
@@ -388,12 +397,16 @@ public class AguaraPcmPlayer {
             }
         }
 
+        boolean karaokeActive = karaokeAmount > 0.001f && channelCount == 2;
+        boolean environmentActive = environmentMode > 0 && channelCount == 2;
         boolean dspActive = eqActive
                 || Math.abs(preampDb) > 0.001f
                 || bassBoost > 0.001f
                 || tubeDrive > 0.001f
                 || vinylAmount > 0.001f
-                || limiterEnabled;
+                || limiterEnabled
+                || karaokeActive
+                || environmentActive;
 
         if (!dspActive) {
             if (audioTrack != null && playing) {
@@ -409,6 +422,16 @@ public class AguaraPcmPlayer {
         for (int i = 0; i < samples; i++) {
             int channel = i % channelCount;
             float sample = pcmBuffer[i] / 32768.0f;
+
+            if (karaokeActive) {
+                int otherIndex = channel == 0 ? i + 1 : i - 1;
+                if (otherIndex >= 0 && otherIndex < samples) {
+                    float other = pcmBuffer[otherIndex] / 32768.0f;
+                    float center = (sample + other) * 0.5f;
+                    float amount = karaokeAmount / 100f;
+                    sample -= center * amount;
+                }
+            }
 
             sample *= preampLinear;
 
@@ -440,6 +463,10 @@ public class AguaraPcmPlayer {
 
             if (limiterEnabled && Math.abs(sample) > 0.70f) {
                 sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
+            }
+
+            if (environmentActive) {
+                sample = procesarAmbiente(sample, channel);
             }
 
             if (sample > 1f) sample = 1f;
@@ -573,9 +600,66 @@ public class AguaraPcmPlayer {
         return vinylAmount;
     }
 
+    public void setKaraokeAmount(float value) {
+        karaokeAmount = Math.max(0f, Math.min(100f, value));
+        guardarAudioAvanzado();
+    }
+
+    public float getKaraokeAmount() {
+        return karaokeAmount;
+    }
+
+    public int getEnvironmentMode() {
+        return environmentMode;
+    }
+
+    public void setEnvironmentMode(int mode) {
+        environmentMode = Math.max(0, Math.min(5, mode));
+        resetAmbiente();
+        guardarAudioAvanzado();
+    }
+
+
     public void setVinylAmount(float value) {
         vinylAmount = Math.max(0f, Math.min(100f, value));
         guardarAudioAvanzado();
+    }
+
+    private void configurarAmbiente() {
+        int length = Math.max(1, Math.round(sampleRate * 0.32f));
+        environmentDelay = new float[][]{new float[length], new float[length]};
+        environmentIndex = 0;
+    }
+
+    private void resetAmbiente() {
+        if (environmentDelay == null) return;
+        for (int ch = 0; ch < environmentDelay.length; ch++) {
+            java.util.Arrays.fill(environmentDelay[ch], 0f);
+        }
+        environmentIndex = 0;
+    }
+
+    private float procesarAmbiente(float dry, int channel) {
+        if (environmentDelay == null || environmentDelay[0].length < 2) return dry;
+
+        float[] perfilMix = {0f, 0.10f, 0.16f, 0.20f, 0.24f, 0.28f};
+        float[] perfilFeedback = {0f, 0.12f, 0.20f, 0.27f, 0.34f, 0.40f};
+        int[] baseMs = {0, 18, 32, 48, 62, 82};
+        int delaySamples = Math.max(1, Math.min(
+                environmentDelay[0].length - 1,
+                Math.round(sampleRate * baseMs[environmentMode] / 1000f)));
+
+        float[] own = environmentDelay[channel];
+        float[] other = environmentDelay[channel == 0 ? 1 : 0];
+        int read = environmentIndex - delaySamples;
+        if (read < 0) read += own.length;
+
+        float wet = own[read] * 0.72f + other[read] * 0.28f;
+        float feedback = perfilFeedback[environmentMode];
+        own[environmentIndex] = dry + wet * feedback;
+
+        float mix = perfilMix[environmentMode];
+        return dry * (1f - mix) + wet * mix;
     }
 
     private void resetFilters() {
@@ -583,6 +667,7 @@ public class AguaraPcmPlayer {
             filter.reset();
         }
         bassFilter.reset();
+        resetAmbiente();
     }
 
     public void release() {
