@@ -667,7 +667,7 @@ public class AguaraPcmPlayer {
         // En medios vocales la reducción es algo más fuerte; fuera de ellos
         // conservamos más música para que el karaoke suene menos destruido.
         float midReduction = Math.min(1f, amount);
-        float edgeReduction = amount * 0.70f;
+        float edgeReduction = amount * 0.45f;
         return low * edgeReduction + mid * midReduction + high * edgeReduction;
     }
 
