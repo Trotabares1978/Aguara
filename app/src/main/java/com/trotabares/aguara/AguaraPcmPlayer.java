@@ -64,7 +64,7 @@ public class AguaraPcmPlayer {
     private float tubeDrive = 0f;
     private float vinylAmount = 0f;
     private float karaokeAmount = 0f;
-    private int environmentMode = 0;
+    private int environmentMode = 0;\n    private boolean guazuMode = false;
     private float[][] environmentDelay = new float[2][1];
     private int environmentIndex = 0;
 
@@ -403,7 +403,7 @@ public class AguaraPcmPlayer {
         }
 
         boolean karaokeActive = karaokeAmount > 0.001f && channelCount == 2;
-        boolean environmentActive = environmentMode > 0 && channelCount == 2;
+        boolean environmentActive = (environmentMode > 0 || guazuMode) && channelCount == 2;
         boolean dspActive = eqActive
                 || Math.abs(preampDb) > 0.001f
                 || bassBoost > 0.001f
@@ -616,7 +616,7 @@ public class AguaraPcmPlayer {
         return karaokeAmount;
     }
 
-    public int getEnvironmentMode() {
+    public boolean isGuazuMode() {\n        return guazuMode;\n    }\n\n    public void aplicarModoGuazu() {\n        guazuMode = true;\n        float[] guazuEq = {2f, 2f, 1f, 0f, 1f, 1f, 1f, 0f, -1f, -1f};\n        for (int i = 0; i < filters.length; i++) {\n            filters[i].setGain(guazuEq[i]);\n        }\n        preampDb = 1f;\n        bassBoost = 2f;\n        tubeDrive = 2f;\n        vinylAmount = 14f;\n        limiterEnabled = true;\n        karaokeAmount = 0f;\n        environmentMode = 0;\n        resetAmbiente();\n        guardarEcualizacion();\n        guardarAudioAvanzado();\n    }\n\n    public int getEnvironmentMode() {
         return environmentMode;
     }
 
@@ -698,7 +698,34 @@ public class AguaraPcmPlayer {
         return dry * (1f - mix) + wet * mix;
     }
 
-    private void resetFilters() {
+
+    private float procesarAmbienteGuazu(float dry, int channel) {
+        if (environmentDelay == null || environmentDelay[0].length < 2) return dry;
+
+        // Ambiente especial Guazú: grande, cálido y envolvente, con reflexiones
+        // cortas y una cola moderada para conservar definición.
+        int[] delaysMs = {0, 23, 41, 67, 91};
+        float[] gains = {0.34f, 0.24f, 0.17f, 0.11f, 0.07f};
+        float wet = 0f;
+        float[] own = environmentDelay[channel];
+        float[] other = environmentDelay[channel == 0 ? 1 : 0];
+
+        for (int n = 1; n < delaysMs.length; n++) {
+            int delay = Math.max(1, Math.min(own.length - 1,
+                    Math.round(sampleRate * delaysMs[n] / 1000f)));
+            int read = environmentIndex - delay;
+            while (read < 0) read += own.length;
+            wet += own[read] * gains[n];
+            wet += other[read] * gains[n] * 0.32f;
+        }
+
+        own[environmentIndex] = dry + wet * 0.28f;
+        environmentIndex++;
+        if (environmentIndex >= own.length) environmentIndex = 0;
+
+        return dry * 0.72f + wet * 0.62f;
+    }
+\n    private void resetFilters() {
         for (BandFilter filter : filters) {
             filter.reset();
         }
