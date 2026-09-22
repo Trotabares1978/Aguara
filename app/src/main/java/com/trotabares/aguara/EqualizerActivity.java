@@ -25,7 +25,6 @@ public class EqualizerActivity extends Activity {
     private SeekBar bassBoostSeek;
     private SeekBar tubeSeek;
     private SeekBar vinylSeek;
-    private SeekBar karaokeSeek;
     private Switch limiterSwitch;
 
     private final int fondo = Color.rgb(18, 18, 18);
@@ -263,8 +262,16 @@ public class EqualizerActivity extends Activity {
         karaokeTitulo.setGravity(Gravity.CENTER_VERTICAL);
         panel.addView(karaokeTitulo, new LinearLayout.LayoutParams(-1, dp(42)));
 
-        agregarControl(panel, "KARAOKE", "0", "100", 0f, 100f,
-                player.getKaraokeAmount(), value -> player.setKaraokeAmount(value));
+        Button karaoke = new Button(this);
+        karaoke.setText(player.getKaraokeAmount() > 0.5f ? "✓ KARAOKE" : "KARAOKE");
+        karaoke.setTextColor(blanco);
+        estilizarBoton(karaoke);
+        karaoke.setOnClickListener(v -> {
+            boolean activo = player.getKaraokeAmount() <= 0.5f;
+            player.setKaraokeAmount(activo ? 100f : 0f);
+            karaoke.setText(activo ? "✓ KARAOKE" : "KARAOKE");
+        });
+        panel.addView(karaoke, new LinearLayout.LayoutParams(-1, dp(52)));
 
         return panel;
     }
@@ -314,7 +321,6 @@ public class EqualizerActivity extends Activity {
         else if (nombre.equals("BASS BOOST")) bassBoostSeek = seek;
         else if (nombre.equals("VÁLVULA · DRIVE")) tubeSeek = seek;
         else if (nombre.equals("VINILO · AMBIENTE")) vinylSeek = seek;
-        else if (nombre.equals("KARAOKE")) karaokeSeek = seek;
 
         TextView range = text(minimo + "                                      " + maximo, 11, gris);
         panel.addView(range, new LinearLayout.LayoutParams(-1, dp(24)));
@@ -347,7 +353,6 @@ public class EqualizerActivity extends Activity {
         if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
         if (tubeSeek != null) tubeSeek.setProgress(0);
         if (vinylSeek != null) vinylSeek.setProgress(0);
-        if (karaokeSeek != null) karaokeSeek.setProgress(0);
         if (limiterSwitch != null) limiterSwitch.setChecked(false);
     }
 
