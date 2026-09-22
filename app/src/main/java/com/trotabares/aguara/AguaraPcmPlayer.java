@@ -10,6 +10,7 @@ import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,6 +51,8 @@ public class AguaraPcmPlayer {
     private int channelCount = 2;
     private long positionBaseMs;
     private long framesWritten;
+    private short[] pcmBuffer;
+    private final BandFilter bassFilter = new BandFilter(100f);
 
     private OnPreparedListener preparedListener;
     private OnCompletionListener completionListener;
@@ -86,7 +89,7 @@ public class AguaraPcmPlayer {
                 context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
 
         preampDb = prefs.getFloat("advanced_preamp_db", 0f);
-        limiterEnabled = prefs.getBoolean("advanced_limiter", true);
+        limiterEnabled = prefs.getBoolean("advanced_limiter", false);
         bassBoost = prefs.getFloat("advanced_bass_boost", 0f);
         tubeDrive = prefs.getFloat("advanced_tube_drive", 0f);
         vinylAmount = prefs.getFloat("advanced_vinyl", 0f);
@@ -144,6 +147,8 @@ public class AguaraPcmPlayer {
 
     private void decodeLoop() {
         try {
+            try { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO); } catch (Exception ignored) {}
+
             if (sourceUri == null) {
                 throw new IllegalStateException("No hay fuente de audio");
             }
@@ -326,7 +331,7 @@ public class AguaraPcmPlayer {
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build())
                 .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(Math.max(minBuffer * 2, 16384))
+                .setBufferSizeInBytes(Math.max(minBuffer * 4, 32768))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build();
 
@@ -340,6 +345,7 @@ public class AguaraPcmPlayer {
         for (BandFilter filter : filters) {
             filter.configure(sampleRate);
         }
+        bassFilter.configure(sampleRate);
     }
 
     private void performPendingSeek() {
@@ -365,33 +371,59 @@ public class AguaraPcmPlayer {
 
     private void processPcm16(ByteBuffer buffer, int size) {
         int samples = size / 2;
-        short[] pcm = new short[samples];
+
+        if (pcmBuffer == null || pcmBuffer.length < samples) {
+            pcmBuffer = new short[samples];
+        }
 
         buffer.order(ByteOrder.nativeOrder())
                 .asShortBuffer()
-                .get(pcm);
+                .get(pcmBuffer, 0, samples);
 
-        for (int i = 0; i < pcm.length; i++) {
+        boolean eqActive = false;
+        for (BandFilter filter : filters) {
+            if (Math.abs(filter.getGain()) > 0.001f) {
+                eqActive = true;
+                break;
+            }
+        }
+
+        boolean dspActive = eqActive
+                || Math.abs(preampDb) > 0.001f
+                || bassBoost > 0.001f
+                || tubeDrive > 0.001f
+                || vinylAmount > 0.001f
+                || limiterEnabled;
+
+        if (!dspActive) {
+            if (audioTrack != null && playing) {
+                int written = audioTrack.write(
+                        pcmBuffer, 0, samples, AudioTrack.WRITE_BLOCKING);
+                if (written > 0) framesWritten += written / channelCount;
+            }
+            return;
+        }
+
+        float preampLinear = (float) Math.pow(10.0, preampDb / 20.0);
+
+        for (int i = 0; i < samples; i++) {
             int channel = i % channelCount;
-            float sample = pcm[i] / 32768.0f;
+            float sample = pcmBuffer[i] / 32768.0f;
 
-            // Cadena DSP AGUARÁ: preamp -> EQ -> bass -> válvula -> vinilo -> limiter.
-            sample *= (float) Math.pow(10.0, preampDb / 20.0);
+            sample *= preampLinear;
 
-            for (BandFilter filter : filters) {
-                sample = filter.process(sample, channel);
+            if (eqActive) {
+                for (BandFilter filter : filters) {
+                    sample = filter.process(sample, channel);
+                }
             }
 
             if (bassBoost > 0f) {
-                float low = filters[0].process(sample, channel);
+                float low = bassFilter.process(sample, channel);
                 sample += low * (bassBoost / 12f) * 0.35f;
             }
 
             if (tubeDrive > 0f) {
-                // Saturación de válvula suave y progresiva:
-                // el control mezcla una pequeña cantidad de señal saturada
-                // con la señal limpia, evitando que unos pocos puntos del
-                // deslizador produzcan una distorsión brusca.
                 float amount = tubeDrive / 12f;
                 float drive = 1f + amount * 2.0f;
                 float saturated = (float) Math.tanh(sample * drive)
@@ -406,27 +438,20 @@ public class AguaraPcmPlayer {
                 sample += noise * (vinylAmount / 100f) * 0.018f;
             }
 
-            if (limiterEnabled) {
+            if (limiterEnabled && Math.abs(sample) > 0.70f) {
                 sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
             }
 
             if (sample > 1f) sample = 1f;
             if (sample < -1f) sample = -1f;
 
-            pcm[i] = (short) (sample * 32767f);
+            pcmBuffer[i] = (short) (sample * 32767f);
         }
 
         if (audioTrack != null && playing) {
             int written = audioTrack.write(
-                    pcm,
-                    0,
-                    pcm.length,
-                    AudioTrack.WRITE_BLOCKING
-            );
-
-            if (written > 0) {
-                framesWritten += written / channelCount;
-            }
+                    pcmBuffer, 0, samples, AudioTrack.WRITE_BLOCKING);
+            if (written > 0) framesWritten += written / channelCount;
         }
     }
 
@@ -557,6 +582,7 @@ public class AguaraPcmPlayer {
         for (BandFilter filter : filters) {
             filter.reset();
         }
+        bassFilter.reset();
     }
 
     public void release() {
