@@ -64,7 +64,8 @@ public class AguaraPcmPlayer {
     private float tubeDrive = 0f;
     private float vinylAmount = 0f;
     private float karaokeAmount = 0f;
-    private int environmentMode = 0;\n    private boolean guazuMode = false;
+    private int environmentMode = 0;
+    private boolean guazuMode = false;
     private float[][] environmentDelay = new float[2][1];
     private int environmentIndex = 0;
 
@@ -616,11 +617,34 @@ public class AguaraPcmPlayer {
         return karaokeAmount;
     }
 
-    public boolean isGuazuMode() {\n        return guazuMode;\n    }\n\n    public void aplicarModoGuazu() {\n        guazuMode = true;\n        float[] guazuEq = {2f, 2f, 1f, 0f, 1f, 1f, 1f, 0f, -1f, -1f};\n        for (int i = 0; i < filters.length; i++) {\n            filters[i].setGain(guazuEq[i]);\n        }\n        preampDb = 1f;\n        bassBoost = 2f;\n        tubeDrive = 2f;\n        vinylAmount = 14f;\n        limiterEnabled = true;\n        karaokeAmount = 0f;\n        environmentMode = 0;\n        resetAmbiente();\n        guardarEcualizacion();\n        guardarAudioAvanzado();\n    }\n\n    public int getEnvironmentMode() {
+    public boolean isGuazuMode() {
+        return guazuMode;
+    }
+
+    public void aplicarModoGuazu() {
+        guazuMode = true;
+        float[] guazuEq = {2f, 2f, 1f, 0f, 1f, 1f, 1f, 0f, -1f, -1f};
+        for (int i = 0; i < filters.length; i++) {
+            filters[i].setGain(guazuEq[i]);
+        }
+        preampDb = 1f;
+        bassBoost = 2f;
+        tubeDrive = 2f;
+        vinylAmount = 14f;
+        limiterEnabled = true;
+        karaokeAmount = 0f;
+        environmentMode = 0;
+        resetAmbiente();
+        guardarEcualizacion();
+        guardarAudioAvanzado();
+    }
+
+    public int getEnvironmentMode() {
         return environmentMode;
     }
 
     public void setEnvironmentMode(int mode) {
+        guazuMode = false;
         environmentMode = Math.max(0, Math.min(5, mode));
         resetAmbiente();
         guardarAudioAvanzado();
@@ -725,7 +749,8 @@ public class AguaraPcmPlayer {
 
         return dry * 0.72f + wet * 0.62f;
     }
-\n    private void resetFilters() {
+
+    private void resetFilters() {
         for (BandFilter filter : filters) {
             filter.reset();
         }
