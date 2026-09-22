@@ -227,10 +227,10 @@ public class EqualizerActivity extends Activity {
         agregarControl(panel, "BASS BOOST", "0", "12 dB", 0f, 12f,
                 player.getBassBoost(), value -> player.setBassBoost(value));
 
-        agregarControl(panel, "VÁLVULA · DRIVE", "Limpio", "12", 0f, 12f,
+        agregarControl(panel, "EFECTO VÁLVULA", "Limpio", "12", 0f, 12f,
                 player.getTubeDrive(), value -> player.setTubeDrive(value));
 
-        agregarControl(panel, "VINILO · AMBIENTE", "0", "100", 0f, 100f,
+        agregarControl(panel, "EFECTO VINILO", "0", "100", 0f, 100f,
                 player.getVinylAmount(), value -> player.setVinylAmount(value));
 
         TextView ambientes = text("AMBIENTE", 18, blanco);
@@ -256,6 +256,18 @@ public class EqualizerActivity extends Activity {
         }
         panel.addView(filaAmbientes, new LinearLayout.LayoutParams(-1, dp(58)));
         actualizarBotonesAmbiente(filaAmbientes);
+
+        Button guazu = new Button(this);
+        guazu.setText(player.isGuazuMode() ? "✓ 🐆 MODO GUAZÚ" : "🐆 MODO GUAZÚ");
+        guazu.setTextColor(blanco);
+        estilizarBoton(guazu);
+        guazu.setOnClickListener(v -> {
+            player.aplicarModoGuazu();
+            guazu.setText("✓ 🐆 MODO GUAZÚ");
+            actualizarBotonesAmbiente(filaAmbientes);
+            refrescarSlidersAvanzados();
+        });
+        panel.addView(guazu, new LinearLayout.LayoutParams(-1, dp(52)));
 
         TextView karaokeTitulo = text("KARAOKE", 18, blanco);
         karaokeTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -319,8 +331,8 @@ public class EqualizerActivity extends Activity {
 
         if (nombre.equals("PREAMP")) preampSeek = seek;
         else if (nombre.equals("BASS BOOST")) bassBoostSeek = seek;
-        else if (nombre.equals("VÁLVULA · DRIVE")) tubeSeek = seek;
-        else if (nombre.equals("VINILO · AMBIENTE")) vinylSeek = seek;
+        else if (nombre.equals("EFECTO VÁLVULA")) tubeSeek = seek;
+        else if (nombre.equals("EFECTO VINILO")) vinylSeek = seek;
 
         TextView range = text(minimo + "                                      " + maximo, 11, gris);
         panel.addView(range, new LinearLayout.LayoutParams(-1, dp(24)));
@@ -419,6 +431,14 @@ public class EqualizerActivity extends Activity {
                 boton.setText((activo ? "✓ " : "") + new String[]{"SECO", "SALA", "TEATRO", "CONCIERTO", "AIRE LIBRE", "ESTADIO"}[i]);
             }
         }
+    }
+
+    private void refrescarSlidersAvanzados() {
+        if (preampSeek != null) preampSeek.setProgress(Math.round((player.getPreampDb() + 12f) * 100f));
+        if (bassBoostSeek != null) bassBoostSeek.setProgress(Math.round(player.getBassBoost() * 100f));
+        if (tubeSeek != null) tubeSeek.setProgress(Math.round(player.getTubeDrive() * 100f));
+        if (vinylSeek != null) vinylSeek.setProgress(Math.round(player.getVinylAmount() * 100f));
+        if (limiterSwitch != null) limiterSwitch.setChecked(player.isLimiterEnabled());
     }
 
     private void refrescarSliders() {
