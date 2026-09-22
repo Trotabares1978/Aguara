@@ -67,6 +67,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private TextView estadoCola;
     private Button favorito;
     private Button play;
+    private Button karaokeButton;
     private SeekBar progreso;
     private AguaraPcmPlayer reproductor;
     private MediaSession mediaSession;
@@ -525,6 +526,14 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         eqp.topMargin = dp(4);
         vista.addView(ecualizador, eqp);
 
+        karaokeButton = new Button(this);
+        karaokeButton.setText("🎤  KARAOKE");
+        karaokeButton.setTextColor(blanco);
+        karaokeButton.setOnClickListener(v -> alternarKaraoke());
+        LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(-1, dp(50));
+        kp.topMargin = dp(4);
+        vista.addView(karaokeButton, kp);
+
         Button cola = new Button(this);
         cola.setText("☰  COLA");
         cola.setTextColor(blanco);
@@ -553,6 +562,26 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         actualizarTextoModos();
         actualizarBotonFavorito();
         return vista;
+    }
+
+    private void alternarKaraoke() {
+        if (reproductor == null) {
+            new AlertDialog.Builder(this)
+                    .setTitle("KARAOKE")
+                    .setMessage("Primero seleccioná una canción.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        float nuevo = reproductor.getKaraokeAmount() > 0.5f ? 0f : 100f;
+        reproductor.setKaraokeAmount(nuevo);
+        actualizarBotonKaraoke();
+    }
+
+    private void actualizarBotonKaraoke() {
+        if (karaokeButton == null) return;
+        karaokeButton.setText(
+                reproductor != null && reproductor.getKaraokeAmount() > 0.5f
+                        ? "🎤  KARAOKE · ON" : "🎤  KARAOKE");
     }
 
     private void alternarAleatorio() {
@@ -966,6 +995,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                     play.setText("⏸");
                     actualizarMediaSessionMetadata();
                     actualizarMediaSessionEstado();
+                    actualizarBotonKaraoke();
                     handler.removeCallbacks(actualizarProgreso);
                     handler.post(actualizarProgreso);
                 } else {
@@ -990,6 +1020,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             });
 
             actualizarDatosAudio(audio);
+            actualizarBotonKaraoke();
             setContentView(root);
             reproductor.prepareAsync();
         } catch (Exception e) {
