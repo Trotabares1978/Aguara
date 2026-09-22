@@ -234,7 +234,7 @@ public class EqualizerActivity extends Activity {
         agregarControl(panel, "VINILO · AMBIENTE", "0", "100", 0f, 100f,
                 player.getVinylAmount(), value -> player.setVinylAmount(value));
 
-        TextView ambientes = text("AMBIENTES ESPACIALES", 18, blanco);
+        TextView ambientes = text("AMBIENTE", 18, blanco);
         ambientes.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         ambientes.setGravity(Gravity.CENTER_VERTICAL);
         panel.addView(ambientes, new LinearLayout.LayoutParams(-1, dp(42)));
@@ -258,12 +258,12 @@ public class EqualizerActivity extends Activity {
         panel.addView(filaAmbientes, new LinearLayout.LayoutParams(-1, dp(58)));
         actualizarBotonesAmbiente(filaAmbientes);
 
-        TextView karaokeTitulo = text("KARAOKE LOCAL", 18, blanco);
+        TextView karaokeTitulo = text("KARAOKE", 18, blanco);
         karaokeTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         karaokeTitulo.setGravity(Gravity.CENTER_VERTICAL);
         panel.addView(karaokeTitulo, new LinearLayout.LayoutParams(-1, dp(42)));
 
-        agregarControl(panel, "REDUCCIÓN DE VOZ", "0", "100", 0f, 100f,
+        agregarControl(panel, "KARAOKE", "0", "100", 0f, 100f,
                 player.getKaraokeAmount(), value -> player.setKaraokeAmount(value));
 
         return panel;
@@ -314,7 +314,7 @@ public class EqualizerActivity extends Activity {
         else if (nombre.equals("BASS BOOST")) bassBoostSeek = seek;
         else if (nombre.equals("VÁLVULA · DRIVE")) tubeSeek = seek;
         else if (nombre.equals("VINILO · AMBIENTE")) vinylSeek = seek;
-        else if (nombre.equals("REDUCCIÓN DE VOZ")) karaokeSeek = seek;
+        else if (nombre.equals("KARAOKE")) karaokeSeek = seek;
 
         TextView range = text(minimo + "                                      " + maximo, 11, gris);
         panel.addView(range, new LinearLayout.LayoutParams(-1, dp(24)));
