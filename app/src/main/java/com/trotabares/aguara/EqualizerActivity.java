@@ -366,6 +366,7 @@ public class EqualizerActivity extends Activity {
         player.setLimiterEnabled(false);
 
         refrescarSliders();
+        actualizarEstadoGuazu();
 
         if (preampSeek != null) preampSeek.setProgress(1200);
         if (bassBoostSeek != null) bassBoostSeek.setProgress(0);
@@ -435,6 +436,21 @@ public class EqualizerActivity extends Activity {
                 Button boton = (Button) vista;
                 boolean activo = !player.isGuazuMode() && i == player.getEnvironmentMode();
                 boton.setText((activo ? "✓ " : "") + new String[]{"SECO", "SALA", "TEATRO", "CONCIERTO", "AIRE LIBRE", "ESTADIO"}[i]);
+            }
+        }
+    }
+
+    private void actualizarEstadoGuazu() {
+        if (advancedLayout == null || player == null) return;
+        for (int i = 0; i < advancedLayout.getChildCount(); i++) {
+            View vista = advancedLayout.getChildAt(i);
+            if (vista instanceof Button) {
+                Button boton = (Button) vista;
+                String texto = boton.getText().toString();
+                if (texto.contains("MODO GUAZÚ")) {
+                    boton.setText(player.isGuazuMode() ? "✓ 🐆 MODO GUAZÚ" : "🐆 MODO GUAZÚ");
+                    break;
+                }
             }
         }
     }
