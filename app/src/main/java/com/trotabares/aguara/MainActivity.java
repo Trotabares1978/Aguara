@@ -33,6 +33,7 @@ import android.media.MediaPlayer;
 import android.media.AudioManager;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
+import android.media.AudioRecordingConfiguration;
 import android.media.session.MediaSession;
 import android.media.MediaMetadata;
 import android.media.session.PlaybackState;
@@ -45,6 +46,7 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.List;
 
 public class MainActivity extends Activity implements PlaybackService.PlaybackListener {
 
@@ -120,6 +122,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private AudioManager.OnAudioFocusChangeListener audioFocusListener;
     private AudioFocusRequest audioFocusRequest;
     private boolean pausaPorOtraApp = false;
+    private boolean pausaPorGrabacion = false;
+    private AudioManager.AudioRecordingCallback grabacionCallback;
 
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
@@ -187,6 +191,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         construirInterfazPrincipal();
         configurarFocoAudio();
+        configurarDeteccionGrabacion();
         configurarMediaSession();
         abrirAudioRecibido(getIntent());
 
@@ -259,6 +264,49 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 }
             }
         };
+    }
+
+    private void configurarDeteccionGrabacion() {
+        if (audioManager == null) return;
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.N) return;
+
+        grabacionCallback = new AudioManager.AudioRecordingCallback() {
+            @Override
+            public void onRecordingConfigChanged(List<AudioRecordingConfiguration> configs) {
+                actualizarEstadoGrabacion(!configs.isEmpty());
+            }
+        };
+
+        try {
+            audioManager.registerAudioRecordingCallback(grabacionCallback, handler);
+            actualizarEstadoGrabacion(!audioManager.getActiveRecordingConfigurations().isEmpty());
+        } catch (Exception ignored) {}
+    }
+
+    private void actualizarEstadoGrabacion(boolean grabando) {
+        if (grabando) {
+            if (reproductor != null && reproductor.isPlaying()) {
+                try { reproductor.pause(); } catch (Exception ignored) {}
+                pausaPorGrabacion = true;
+                guardarUltimaPosicion();
+                if (play != null) play.setText("▶");
+                actualizarMediaSessionEstado();
+            }
+        } else if (pausaPorGrabacion) {
+            if (reproductor != null && !reproductor.isPlaying()) {
+                try {
+                    if (pedirFocoAudio()) {
+                        reproductor.start();
+                        pausaPorGrabacion = false;
+                        if (play != null) play.setText("⏸");
+                        handler.post(actualizarProgreso);
+                        actualizarMediaSessionEstado();
+                    }
+                } catch (Exception ignored) {}
+            } else {
+                pausaPorGrabacion = false;
+            }
+        }
     }
 
     private boolean pedirFocoAudio() {
@@ -1522,6 +1570,9 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(actualizarProgreso);
+        if (audioManager != null && grabacionCallback != null) {
+            try { audioManager.unregisterAudioRecordingCallback(grabacionCallback); } catch (Exception ignored) {}
+        }
         guardarUltimaPosicion();
 
         if (reproductor != null) {
