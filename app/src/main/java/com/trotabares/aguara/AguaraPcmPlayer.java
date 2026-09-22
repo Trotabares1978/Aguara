@@ -469,13 +469,15 @@ public class AguaraPcmPlayer {
                 sample += noise * (vinylAmount / 100f) * 0.018f;
             }
 
-            if (limiterEnabled && Math.abs(sample) > 0.70f) {
+            if (limiterEnabled && !guazuMode && Math.abs(sample) > 0.70f) {
                 sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
             }
 
             if (environmentActive) {
-                sample = procesarAmbiente(sample, channel);
+                sample = guazuMode ? procesarAmbienteGuazu(sample, channel) : procesarAmbiente(sample, channel);
             }
+
+            if (guazuMode) sample = limitarGuazu(sample);
 
             if (sample > 1f) sample = 1f;
             if (sample < -1f) sample = -1f;
@@ -627,8 +629,8 @@ public class AguaraPcmPlayer {
         for (int i = 0; i < filters.length; i++) {
             filters[i].setGain(guazuEq[i]);
         }
-        preampDb = 1f;
-        bassBoost = 2f;
+        preampDb = -2f;
+        bassBoost = 1.5f;
         tubeDrive = 2f;
         vinylAmount = 14f;
         limiterEnabled = true;
@@ -750,11 +752,20 @@ public class AguaraPcmPlayer {
             wet += other[read] * gains[n] * 0.32f;
         }
 
-        own[environmentIndex] = dry + wet * 0.28f;
+        own[environmentIndex] = dry + wet * 0.20f;
         environmentIndex++;
         if (environmentIndex >= own.length) environmentIndex = 0;
 
-        return dry * 0.72f + wet * 0.62f;
+        return dry * 0.80f + wet * 0.46f;
+    }
+
+    private float limitarGuazu(float sample) {
+        final float ceiling = 0.89125f;
+        float abs = Math.abs(sample);
+        if (abs <= ceiling) return sample;
+        float excess = abs - ceiling;
+        float compressed = ceiling + excess / (1f + excess * 7f);
+        return Math.copySign(Math.min(ceiling + 0.025f, compressed), sample);
     }
 
     private void resetFilters() {
