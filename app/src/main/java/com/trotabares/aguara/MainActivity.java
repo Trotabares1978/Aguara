@@ -30,6 +30,10 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
+import android.media.AudioManager;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioRecordingConfiguration;
 import android.media.session.MediaSession;
 import android.media.MediaMetadata;
 import android.media.session.PlaybackState;
@@ -42,6 +46,7 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.List;
 
 public class MainActivity extends Activity implements PlaybackService.PlaybackListener {
 
@@ -67,6 +72,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private TextView estadoCola;
     private Button favorito;
     private Button play;
+    private Button karaokeButton;
     private SeekBar progreso;
     private AguaraPcmPlayer reproductor;
     private MediaSession mediaSession;
@@ -108,6 +114,16 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     private boolean reanudarDesdeGuardado = false;
     private boolean iniciarReproduccionAlPreparar = true;
     private boolean audioAbiertoExternamente = false;
+
+    // Manejo de foco de audio: cuando otra app (por ejemplo WhatsApp)
+    // necesita reproducir un audio, AGUARÁ se detiene completamente y
+    // vuelve a continuar cuando recupera el foco.
+    private AudioManager audioManager;
+    private AudioManager.OnAudioFocusChangeListener audioFocusListener;
+    private AudioFocusRequest audioFocusRequest;
+    private boolean pausaPorOtraApp = false;
+    private boolean pausaPorGrabacion = false;
+    private AudioManager.AudioRecordingCallback grabacionCallback;
 
     private final Runnable actualizarProgreso = new Runnable() {
         @Override
@@ -174,6 +190,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         }
 
         construirInterfazPrincipal();
+        configurarFocoAudio();
+        configurarDeteccionGrabacion();
         configurarMediaSession();
         abrirAudioRecibido(getIntent());
 
@@ -223,10 +241,122 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         abrirAudioRecibido(intent);
     }
 
+    private void configurarFocoAudio() {
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        audioFocusListener = focusChange -> {
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS
+                    || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+                    || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                if (reproductor != null && reproductor.isPlaying()) {
+                    try { reproductor.pause(); } catch (Exception ignored) {}
+                    pausaPorOtraApp = true;
+                    guardarUltimaPosicion();
+                    if (play != null) play.setText("▶");
+                    actualizarMediaSessionEstado();
+                }
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                if (pausaPorOtraApp && reproductor != null && !reproductor.isPlaying()) {
+                    try { reproductor.start(); } catch (Exception ignored) {}
+                    pausaPorOtraApp = false;
+                    if (play != null) play.setText("⏸");
+                    handler.post(actualizarProgreso);
+                    actualizarMediaSessionEstado();
+                }
+            }
+        };
+    }
+
+    private void configurarDeteccionGrabacion() {
+        if (audioManager == null) return;
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.N) return;
+
+        grabacionCallback = new AudioManager.AudioRecordingCallback() {
+            @Override
+            public void onRecordingConfigChanged(List<AudioRecordingConfiguration> configs) {
+                actualizarEstadoGrabacion(!configs.isEmpty());
+            }
+        };
+
+        try {
+            audioManager.registerAudioRecordingCallback(grabacionCallback, handler);
+            actualizarEstadoGrabacion(!audioManager.getActiveRecordingConfigurations().isEmpty());
+        } catch (Exception ignored) {}
+    }
+
+    private void actualizarEstadoGrabacion(boolean grabando) {
+        if (grabando) {
+            if (reproductor != null && reproductor.isPlaying()) {
+                try { reproductor.pause(); } catch (Exception ignored) {}
+                pausaPorGrabacion = true;
+                guardarUltimaPosicion();
+                if (play != null) play.setText("▶");
+                actualizarMediaSessionEstado();
+            }
+        } else if (pausaPorGrabacion) {
+            if (reproductor != null && !reproductor.isPlaying()) {
+                try {
+                    if (pedirFocoAudio()) {
+                        reproductor.start();
+                        pausaPorGrabacion = false;
+                        if (play != null) play.setText("⏸");
+                        handler.post(actualizarProgreso);
+                        actualizarMediaSessionEstado();
+                    }
+                } catch (Exception ignored) {}
+            } else {
+                pausaPorGrabacion = false;
+            }
+        }
+    }
+
+    private boolean pedirFocoAudio() {
+        if (audioManager == null || audioFocusListener == null) configurarFocoAudio();
+        if (audioManager == null) return true;
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            AudioAttributes atributos = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+            audioFocusRequest =
+                    new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                            .setAudioAttributes(atributos)
+                            .setWillPauseWhenDucked(true)
+                            .setAcceptsDelayedFocusGain(false)
+                            .setOnAudioFocusChangeListener(audioFocusListener)
+                            .build();
+            return audioManager.requestAudioFocus(audioFocusRequest)
+                    == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        }
+
+        return audioManager.requestAudioFocus(
+                audioFocusListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN)
+                == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+    }
+
+    private void abandonarFocoAudio() {
+        if (audioManager == null || audioFocusListener == null) return;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                    && audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            } else {
+                audioManager.abandonAudioFocus(audioFocusListener);
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void configurarMediaSession() {
         mediaSession = new MediaSession(this, "AGUARA");
+        mediaSession.setFlags(
+                MediaSession.FLAG_HANDLES_MEDIA_BUTTONS
+                        | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+        );
         mediaSession.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() {
+                if (!pedirFocoAudio()) return;
                 if (reproductor != null && !reproductor.isPlaying()) {
                     try { reproductor.start(); } catch (Exception ignored) {}
                     if (play != null) play.setText("⏸");
@@ -236,6 +366,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             }
 
             @Override public void onPause() {
+                pausaPorOtraApp = false;
                 if (reproductor != null && reproductor.isPlaying()) {
                     try { reproductor.pause(); } catch (Exception ignored) {}
                     guardarUltimaPosicion();
@@ -521,6 +652,14 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         eqp.topMargin = dp(4);
         vista.addView(ecualizador, eqp);
 
+        karaokeButton = new Button(this);
+        karaokeButton.setText("🎤  KARAOKE");
+        karaokeButton.setTextColor(blanco);
+        karaokeButton.setOnClickListener(v -> alternarKaraoke());
+        LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(-1, dp(50));
+        kp.topMargin = dp(4);
+        vista.addView(karaokeButton, kp);
+
         Button cola = new Button(this);
         cola.setText("☰  COLA");
         cola.setTextColor(blanco);
@@ -549,6 +688,26 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         actualizarTextoModos();
         actualizarBotonFavorito();
         return vista;
+    }
+
+    private void alternarKaraoke() {
+        if (reproductor == null) {
+            new AlertDialog.Builder(this)
+                    .setTitle("KARAOKE")
+                    .setMessage("Primero seleccioná una canción.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        float nuevo = reproductor.getKaraokeAmount() > 0.5f ? 0f : 100f;
+        reproductor.setKaraokeAmount(nuevo);
+        actualizarBotonKaraoke();
+    }
+
+    private void actualizarBotonKaraoke() {
+        if (karaokeButton == null) return;
+        karaokeButton.setText(
+                reproductor != null && reproductor.getKaraokeAmount() > 0.5f
+                        ? "🎤  KARAOKE · ON" : "🎤  KARAOKE");
     }
 
     private void alternarAleatorio() {
@@ -957,11 +1116,17 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 guardarEnHistorial(audioActualUri);
 
                 if (iniciarReproduccionAlPreparar) {
+                    if (!pedirFocoAudio()) {
+                        play.setText("▶");
+                        actualizarMediaSessionEstado();
+                        return;
+                    }
                     guardarUltimaPosicion();
                     mp.start();
                     play.setText("⏸");
                     actualizarMediaSessionMetadata();
                     actualizarMediaSessionEstado();
+                    actualizarBotonKaraoke();
                     handler.removeCallbacks(actualizarProgreso);
                     handler.post(actualizarProgreso);
                 } else {
@@ -986,6 +1151,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
             });
 
             actualizarDatosAudio(audio);
+            actualizarBotonKaraoke();
             setContentView(root);
             reproductor.prepareAsync();
         } catch (Exception e) {
@@ -1027,6 +1193,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
                 play.setText("▶");
                 actualizarMediaSessionEstado();
             } else {
+                if (!pedirFocoAudio()) return;
                 reproductor.start();
                 play.setText("⏸");
                 handler.post(actualizarProgreso);
@@ -1403,12 +1570,16 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(actualizarProgreso);
+        if (audioManager != null && grabacionCallback != null) {
+            try { audioManager.unregisterAudioRecordingCallback(grabacionCallback); } catch (Exception ignored) {}
+        }
         guardarUltimaPosicion();
 
         if (reproductor != null) {
             try { reproductor.release(); } catch (Exception ignored) {}
             reproductor = null;
         }
+        abandonarFocoAudio();
 
         if (mediaSession != null) {
             try { mediaSession.setActive(false); } catch (Exception ignored) {}

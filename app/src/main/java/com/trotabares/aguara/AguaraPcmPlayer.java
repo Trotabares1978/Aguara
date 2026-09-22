@@ -10,6 +10,7 @@ import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,6 +51,8 @@ public class AguaraPcmPlayer {
     private int channelCount = 2;
     private long positionBaseMs;
     private long framesWritten;
+    private short[] pcmBuffer;
+    private final BandFilter bassFilter = new BandFilter(100f);
 
     private OnPreparedListener preparedListener;
     private OnCompletionListener completionListener;
@@ -60,6 +63,16 @@ public class AguaraPcmPlayer {
     private float bassBoost = 0f;
     private float tubeDrive = 0f;
     private float vinylAmount = 0f;
+    private float karaokeAmount = 0f;
+    private int environmentMode = 0;
+    private boolean guazuMode = false;
+    private float[][] environmentDelay = new float[2][1];
+    private int environmentIndex = 0;
+
+    // Estados del karaoke: reducción selectiva de la zona vocal del canal central.
+    private float karaokeLowState = 0f;
+    private float karaokeHighLowState = 0f;
+    private float karaokeReducedCenter = 0f;
     private long noiseState = 0x1234ABCDL;
 
     private final BandFilter[] filters = new BandFilter[]{
@@ -86,10 +99,12 @@ public class AguaraPcmPlayer {
                 context.getSharedPreferences("aguara", Context.MODE_PRIVATE);
 
         preampDb = prefs.getFloat("advanced_preamp_db", 0f);
-        limiterEnabled = prefs.getBoolean("advanced_limiter", true);
+        limiterEnabled = prefs.getBoolean("advanced_limiter", false);
         bassBoost = prefs.getFloat("advanced_bass_boost", 0f);
         tubeDrive = prefs.getFloat("advanced_tube_drive", 0f);
         vinylAmount = prefs.getFloat("advanced_vinyl", 0f);
+        karaokeAmount = prefs.getFloat("advanced_karaoke", 0f);
+        environmentMode = prefs.getInt("advanced_environment", 0);
 
         for (int i = 0; i < filters.length; i++) {
             float gain = prefs.getFloat("eq_band_" + i, 0f);
@@ -105,6 +120,8 @@ public class AguaraPcmPlayer {
         editor.putFloat("advanced_bass_boost", bassBoost);
         editor.putFloat("advanced_tube_drive", tubeDrive);
         editor.putFloat("advanced_vinyl", vinylAmount);
+        editor.putFloat("advanced_karaoke", karaokeAmount);
+        editor.putInt("advanced_environment", environmentMode);
         editor.apply();
     }
 
@@ -144,6 +161,8 @@ public class AguaraPcmPlayer {
 
     private void decodeLoop() {
         try {
+            try { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO); } catch (Exception ignored) {}
+
             if (sourceUri == null) {
                 throw new IllegalStateException("No hay fuente de audio");
             }
@@ -326,7 +345,7 @@ public class AguaraPcmPlayer {
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build())
                 .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(Math.max(minBuffer * 2, 16384))
+                .setBufferSizeInBytes(Math.max(minBuffer * 4, 32768))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build();
 
@@ -340,6 +359,8 @@ public class AguaraPcmPlayer {
         for (BandFilter filter : filters) {
             filter.configure(sampleRate);
         }
+        bassFilter.configure(sampleRate);
+        configurarAmbiente();
     }
 
     private void performPendingSeek() {
@@ -365,33 +386,75 @@ public class AguaraPcmPlayer {
 
     private void processPcm16(ByteBuffer buffer, int size) {
         int samples = size / 2;
-        short[] pcm = new short[samples];
+
+        if (pcmBuffer == null || pcmBuffer.length < samples) {
+            pcmBuffer = new short[samples];
+        }
 
         buffer.order(ByteOrder.nativeOrder())
                 .asShortBuffer()
-                .get(pcm);
+                .get(pcmBuffer, 0, samples);
 
-        for (int i = 0; i < pcm.length; i++) {
+        boolean eqActive = false;
+        for (BandFilter filter : filters) {
+            if (Math.abs(filter.getGain()) > 0.001f) {
+                eqActive = true;
+                break;
+            }
+        }
+
+        boolean karaokeActive = karaokeAmount > 0.001f && channelCount == 2;
+        boolean environmentActive = (environmentMode > 0 || guazuMode) && channelCount == 2;
+        boolean dspActive = eqActive
+                || Math.abs(preampDb) > 0.001f
+                || bassBoost > 0.001f
+                || tubeDrive > 0.001f
+                || vinylAmount > 0.001f
+                || limiterEnabled
+                || karaokeActive
+                || environmentActive;
+
+        if (!dspActive) {
+            if (audioTrack != null && playing) {
+                int written = audioTrack.write(
+                        pcmBuffer, 0, samples, AudioTrack.WRITE_BLOCKING);
+                if (written > 0) framesWritten += written / channelCount;
+            }
+            return;
+        }
+
+        float preampLinear = (float) Math.pow(10.0, preampDb / 20.0);
+
+        for (int i = 0; i < samples; i++) {
             int channel = i % channelCount;
-            float sample = pcm[i] / 32768.0f;
+            float sample = pcmBuffer[i] / 32768.0f;
 
-            // Cadena DSP AGUARÁ: preamp -> EQ -> bass -> válvula -> vinilo -> limiter.
-            sample *= (float) Math.pow(10.0, preampDb / 20.0);
+            if (karaokeActive) {
+                int otherIndex = channel == 0 ? i + 1 : i - 1;
+                if (otherIndex >= 0 && otherIndex < samples) {
+                    if (channel == 0) {
+                        float other = pcmBuffer[otherIndex] / 32768.0f;
+                        float center = (sample + other) * 0.5f;
+                        karaokeReducedCenter = procesarCentroKaraoke(center);
+                    }
+                    sample -= karaokeReducedCenter;
+                }
+            }
 
-            for (BandFilter filter : filters) {
-                sample = filter.process(sample, channel);
+            sample *= preampLinear;
+
+            if (eqActive) {
+                for (BandFilter filter : filters) {
+                    sample = filter.process(sample, channel);
+                }
             }
 
             if (bassBoost > 0f) {
-                float low = filters[0].process(sample, channel);
+                float low = bassFilter.process(sample, channel);
                 sample += low * (bassBoost / 12f) * 0.35f;
             }
 
             if (tubeDrive > 0f) {
-                // Saturación de válvula suave y progresiva:
-                // el control mezcla una pequeña cantidad de señal saturada
-                // con la señal limpia, evitando que unos pocos puntos del
-                // deslizador produzcan una distorsión brusca.
                 float amount = tubeDrive / 12f;
                 float drive = 1f + amount * 2.0f;
                 float saturated = (float) Math.tanh(sample * drive)
@@ -406,27 +469,26 @@ public class AguaraPcmPlayer {
                 sample += noise * (vinylAmount / 100f) * 0.018f;
             }
 
-            if (limiterEnabled) {
+            if (limiterEnabled && !guazuMode && Math.abs(sample) > 0.70f) {
                 sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
             }
+
+            if (environmentActive) {
+                sample = guazuMode ? procesarAmbienteGuazu(sample, channel) : procesarAmbiente(sample, channel);
+            }
+
+            if (guazuMode) sample = limitarGuazu(sample);
 
             if (sample > 1f) sample = 1f;
             if (sample < -1f) sample = -1f;
 
-            pcm[i] = (short) (sample * 32767f);
+            pcmBuffer[i] = (short) (sample * 32767f);
         }
 
         if (audioTrack != null && playing) {
             int written = audioTrack.write(
-                    pcm,
-                    0,
-                    pcm.length,
-                    AudioTrack.WRITE_BLOCKING
-            );
-
-            if (written > 0) {
-                framesWritten += written / channelCount;
-            }
+                    pcmBuffer, 0, samples, AudioTrack.WRITE_BLOCKING);
+            if (written > 0) framesWritten += written / channelCount;
         }
     }
 
@@ -548,15 +610,170 @@ public class AguaraPcmPlayer {
         return vinylAmount;
     }
 
+    public void setKaraokeAmount(float value) {
+        karaokeAmount = Math.max(0f, Math.min(100f, value));
+        guardarAudioAvanzado();
+    }
+
+    public float getKaraokeAmount() {
+        return karaokeAmount;
+    }
+
+    public boolean isGuazuMode() {
+        return guazuMode;
+    }
+
+    public void aplicarModoGuazu() {
+        guazuMode = true;
+        float[] guazuEq = {2f, 2f, 1f, 0f, 1f, 1f, 1f, 0f, -1f, -1f};
+        for (int i = 0; i < filters.length; i++) {
+            filters[i].setGain(guazuEq[i]);
+        }
+        preampDb = -2f;
+        bassBoost = 1.5f;
+        tubeDrive = 2f;
+        vinylAmount = 14f;
+        limiterEnabled = true;
+        karaokeAmount = 0f;
+        environmentMode = 0;
+        resetAmbiente();
+        guardarEcualizacion();
+        guardarAudioAvanzado();
+    }
+
+    public void desactivarModoGuazu() {
+        guazuMode = false;
+        environmentMode = 0;
+        resetAmbiente();
+        guardarAudioAvanzado();
+    }
+
+    public int getEnvironmentMode() {
+        return environmentMode;
+    }
+
+    public void setEnvironmentMode(int mode) {
+        guazuMode = false;
+        environmentMode = Math.max(0, Math.min(5, mode));
+        resetAmbiente();
+        guardarAudioAvanzado();
+    }
+
+
     public void setVinylAmount(float value) {
         vinylAmount = Math.max(0f, Math.min(100f, value));
         guardarAudioAvanzado();
+    }
+
+    private void configurarAmbiente() {
+        int length = Math.max(1, Math.round(sampleRate * 0.32f));
+        environmentDelay = new float[][]{new float[length], new float[length]};
+        environmentIndex = 0;
+    }
+
+    private void resetAmbiente() {
+        karaokeLowState = 0f;
+        karaokeHighLowState = 0f;
+        karaokeReducedCenter = 0f;
+        if (environmentDelay == null) return;
+        for (int ch = 0; ch < environmentDelay.length; ch++) {
+            java.util.Arrays.fill(environmentDelay[ch], 0f);
+        }
+        environmentIndex = 0;
+    }
+
+    private float procesarCentroKaraoke(float center) {
+        float amount = karaokeAmount / 100f;
+
+        // Separa aproximadamente graves / medios / agudos del canal central.
+        // La zona media es donde suele concentrarse la voz principal.
+        float alphaLow = (float) Math.exp(-2.0 * Math.PI * 120.0 / Math.max(1, sampleRate));
+        float alphaHigh = (float) Math.exp(-2.0 * Math.PI * 6000.0 / Math.max(1, sampleRate));
+
+        karaokeLowState = alphaLow * karaokeLowState + (1f - alphaLow) * center;
+        karaokeHighLowState = alphaHigh * karaokeHighLowState + (1f - alphaHigh) * center;
+
+        float low = karaokeLowState;
+        float high = center - karaokeHighLowState;
+        float mid = center - low - high;
+
+        // En medios vocales la reducción es algo más fuerte; fuera de ellos
+        // conservamos más música para que el karaoke suene menos destruido.
+        float midReduction = Math.min(1f, amount);
+        float edgeReduction = amount * 0.45f;
+        return low * edgeReduction + mid * midReduction + high * edgeReduction;
+    }
+
+    private float procesarAmbiente(float dry, int channel) {
+        if (environmentDelay == null || environmentDelay[0].length < 2) return dry;
+
+        // Perfiles deliberadamente más audibles que la primera versión,
+        // pero sin convertir cada ambiente en una reverberación embarrada.
+        float[] perfilMix = {0f, 0.15f, 0.23f, 0.30f, 0.36f, 0.42f};
+        float[] perfilFeedback = {0f, 0.14f, 0.23f, 0.31f, 0.40f, 0.48f};
+        int[] baseMs = {0, 18, 32, 48, 62, 82};
+        int delaySamples = Math.max(1, Math.min(
+                environmentDelay[0].length - 1,
+                Math.round(sampleRate * baseMs[environmentMode] / 1000f)));
+
+        float[] own = environmentDelay[channel];
+        float[] other = environmentDelay[channel == 0 ? 1 : 0];
+        int read = environmentIndex - delaySamples;
+        if (read < 0) read += own.length;
+
+        float wet = own[read] * 0.72f + other[read] * 0.28f;
+        float feedback = perfilFeedback[environmentMode];
+        own[environmentIndex] = dry + wet * feedback;
+        environmentIndex++;
+        if (environmentIndex >= own.length) environmentIndex = 0;
+
+        float mix = perfilMix[environmentMode];
+        return dry * (1f - mix) + wet * mix;
+    }
+
+
+    private float procesarAmbienteGuazu(float dry, int channel) {
+        if (environmentDelay == null || environmentDelay[0].length < 2) return dry;
+
+        // Ambiente especial Guazú: grande, cálido y envolvente, con reflexiones
+        // cortas y una cola moderada para conservar definición.
+        int[] delaysMs = {0, 23, 41, 67, 91};
+        float[] gains = {0.34f, 0.24f, 0.17f, 0.11f, 0.07f};
+        float wet = 0f;
+        float[] own = environmentDelay[channel];
+        float[] other = environmentDelay[channel == 0 ? 1 : 0];
+
+        for (int n = 1; n < delaysMs.length; n++) {
+            int delay = Math.max(1, Math.min(own.length - 1,
+                    Math.round(sampleRate * delaysMs[n] / 1000f)));
+            int read = environmentIndex - delay;
+            while (read < 0) read += own.length;
+            wet += own[read] * gains[n];
+            wet += other[read] * gains[n] * 0.32f;
+        }
+
+        own[environmentIndex] = dry + wet * 0.20f;
+        environmentIndex++;
+        if (environmentIndex >= own.length) environmentIndex = 0;
+
+        return dry * 0.80f + wet * 0.46f;
+    }
+
+    private float limitarGuazu(float sample) {
+        final float ceiling = 0.89125f;
+        float abs = Math.abs(sample);
+        if (abs <= ceiling) return sample;
+        float excess = abs - ceiling;
+        float compressed = ceiling + excess / (1f + excess * 7f);
+        return Math.copySign(Math.min(ceiling + 0.025f, compressed), sample);
     }
 
     private void resetFilters() {
         for (BandFilter filter : filters) {
             filter.reset();
         }
+        bassFilter.reset();
+        resetAmbiente();
     }
 
     public void release() {
