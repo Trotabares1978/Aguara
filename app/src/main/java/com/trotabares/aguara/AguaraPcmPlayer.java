@@ -52,7 +52,10 @@ public class AguaraPcmPlayer {
     private long positionBaseMs;
     private long framesWritten;
     private short[] pcmBuffer;
-    private final BandFilter bassFilter = new BandFilter(100f);
+    // Filtro pasa-bajos dedicado para BASS BOOST. El antiguo bassFilter era un
+    // BandFilter a 0 dB, es decir, prácticamente una señal de paso completo.
+    private float[] bassLowState = new float[2];
+    private float bassLowAlpha = 0.98f;
 
     private OnPreparedListener preparedListener;
     private OnCompletionListener completionListener;
@@ -359,7 +362,8 @@ public class AguaraPcmPlayer {
         for (BandFilter filter : filters) {
             filter.configure(sampleRate);
         }
-        bassFilter.configure(sampleRate);
+        double omegaBass = 2.0 * Math.PI * 120.0 / Math.max(1.0, sampleRate);
+        bassLowAlpha = (float) Math.exp(-omegaBass);
         configurarAmbiente();
     }
 
@@ -450,8 +454,15 @@ public class AguaraPcmPlayer {
             }
 
             if (bassBoost > 0f) {
-                float low = bassFilter.process(sample, channel);
-                sample += low * (bassBoost / 12f) * 0.35f;
+                int ch = channel == 0 ? 0 : 1;
+                // Extrae solamente el contenido grave (aprox. hasta 120 Hz)
+                // y lo suma de forma progresiva. Así BASS BOOST no aumenta
+                // todo el espectro como ocurría con el filtro anterior.
+                bassLowState[ch] = bassLowAlpha * bassLowState[ch]
+                        + (1f - bassLowAlpha) * sample;
+                float low = bassLowState[ch];
+                float amount = bassBoost / 12f;
+                sample += low * amount * 0.90f;
             }
 
             if (tubeDrive > 0f) {
@@ -761,7 +772,8 @@ public class AguaraPcmPlayer {
         for (BandFilter filter : filters) {
             filter.reset();
         }
-        bassFilter.reset();
+        bassLowState[0] = 0f;
+        bassLowState[1] = 0f;
         resetAmbiente();
     }
 
