@@ -480,15 +480,19 @@ public class AguaraPcmPlayer {
                 sample += noise * (vinylAmount / 100f) * 0.018f;
             }
 
-            if (limiterEnabled && Math.abs(sample) > 0.70f) {
-                sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
-            }
-
+            // El ambiente va antes del limitador final. Antes el limitador se
+            // aplicaba primero y las reflexiones del ambiente podían volver a
+            // levantar los picos, produciendo una saturación leve en Guazú.
             if (environmentActive) {
-                // Guazú usa su ambiente propio; los demás modos usan los perfiles normales.
                 sample = guazuMode
                         ? procesarAmbienteGuazu(sample, channel)
                         : procesarAmbiente(sample, channel);
+            }
+
+            // El limitador es ahora realmente el último eslabón del DSP:
+            // controla también los picos generados por el ambiente.
+            if (limiterEnabled && Math.abs(sample) > 0.70f) {
+                sample = (float) Math.tanh(sample * 1.25f) * 0.80f;
             }
 
             if (sample > 1f) sample = 1f;
