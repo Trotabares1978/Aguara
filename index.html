@@ -66,54 +66,29 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <h2>Características de AGUARÁ</h2>
 <p>Estas funciones corresponden a la implementación actual del proyecto.</p>
 <div class="specs">
-
-<div class="spec"><b>1. Reproductor de archivos locales</b><p>AGUARÁ reproduce música almacenada en el dispositivo, sin streaming y sin necesidad de una cuenta.</p></div>
-
-<div class="spec"><b>2. Elegir un archivo o una carpeta</b><p>Desde la propia aplicación podés abrir un archivo de audio individual o seleccionar una carpeta completa mediante el selector de documentos de Android.</p></div>
-
-<div class="spec"><b>3. Escaneo recursivo de carpetas</b><p>Al seleccionar una carpeta, AGUARÁ recorre también sus subcarpetas y arma automáticamente la biblioteca de archivos de audio encontrados.</p></div>
-
-<div class="spec"><b>4. Formatos de audio contemplados</b><p>El escaneo reconoce archivos MP3, M4A, FLAC, WAV, OGG, AAC, OPUS, WMA, AIFF y AIF.</p></div>
-
-<div class="spec"><b>5. Cola de reproducción</b><p>La aplicación crea una cola con las canciones encontradas, muestra cuántos temas hay y permite tocar cualquier elemento de la cola para reproducirlo.</p></div>
-
-<div class="spec"><b>6. Anterior, play/pausa y siguiente</b><p>Incluye los controles básicos de reproducción. Si la canción ya lleva más de unos segundos, “anterior” vuelve al comienzo; después permite pasar al tema previo.</p></div>
-
-<div class="spec"><b>7. Barra de progreso y búsqueda</b><p>Podés desplazarte por la canción con la barra de reproducción y saltar a otra posición del audio.</p></div>
-
-<div class="spec"><b>8. Reproducción aleatoria</b><p>El modo 🔀 mezcla la cola manteniendo la canción actual y permite volver después al orden original.</p></div>
-
-<div class="spec"><b>9. Tres comportamientos de repetición</b><p>El control de repetición permite reproducir normalmente, repetir la canción actual o volver al comienzo de la cola al terminarla.</p></div>
-
-<div class="spec"><b>10. Historial local</b><p>AGUARÁ guarda hasta 50 reproducciones recientes en el almacenamiento local y permite elegir una canción del historial para volver a escucharla.</p></div>
-
-<div class="spec"><b>11. Continuar donde dejaste</b><p>Guarda la última canción y la posición alcanzada para poder retomarla posteriormente desde el botón “Continuar escuchando”.</p></div>
-
-<div class="spec"><b>12. Lectura de metadatos y portadas</b><p>Lee del archivo datos como título, artista y álbum. Si existe una imagen de portada incrustada en el audio, la muestra; si no, utiliza la portada de AGUARÁ.</p></div>
-
-<div class="spec"><b>13. Ecualizador de 10 bandas</b><p>Incluye bandas de 31 Hz, 62 Hz, 125 Hz, 250 Hz, 500 Hz, 1 kHz, 2 kHz, 4 kHz, 8 kHz y 16 kHz, con ajuste independiente de ganancia.</p></div>
-
-<div class="spec"><b>14. Presets de ecualización</b><p>Trae presets Plano, Bajos, Voz, Rock, Acústico y Lo-Fi para cambiar rápidamente la respuesta del ecualizador.</p></div>
-
-<div class="spec"><b>15. Audio Lab avanzado</b><p>El modo avanzado agrega PREAMP de -12 a +12 dB, limitador de salida, Bass Boost, saturación tipo válvula y un efecto de ambiente tipo vinilo.</p></div>
-
-<div class="spec"><b>16. Motor de audio PCM propio</b><p>AGUARÁ decodifica el audio mediante MediaExtractor/MediaCodec y procesa el PCM antes de enviarlo a AudioTrack, aplicando su cadena DSP de ecualización y efectos.</p></div>
-
-<div class="spec"><b>17. Reproducción en segundo plano</b><p>La aplicación utiliza un servicio de reproducción y una MediaSession para mantener el control multimedia mientras usás otras partes de Android.</p></div>
-
-<div class="spec"><b>18. Controles desde la notificación de Android</b><p>La notificación multimedia ofrece anterior, play/pausa y siguiente, además de integrarse con los controles multimedia del sistema.</p></div>
-
-<div class="spec"><b>19. Abrir música desde otras aplicaciones</b><p>AGUARÁ está registrado para recibir archivos con tipo de contenido audio/* mediante la acción de apertura de Android.</p></div>
-
-<div class="spec"><b>20. Permiso persistente para la biblioteca</b><p>Cuando elegís una carpeta, Android permite conservar el permiso de lectura y AGUARÁ guarda la referencia para volver a utilizar esa biblioteca en próximos arranques.</p></div>
-
-<div class="spec"><b>21. Guardado local de ajustes de audio</b><p>La ecualización, el preamp, Bass Boost, válvula, vinilo y estado del limitador se guardan localmente para conservar la configuración entre sesiones.</p></div>
-
-<div class="spec"><b>22. Sin publicidad ni compras internas</b><p>La aplicación no incorpora anuncios, suscripciones ni compras dentro de la aplicación. El botón de apoyo es externo y voluntario.</p></div>
-
-<div class="spec"><b>23. Sin cuenta ni biblioteca en la nube</b><p>El diseño actual está centrado en reproducir archivos del dispositivo. No requiere iniciar sesión ni subir la biblioteca musical a un servidor.</p></div>
-
+<div class="spec"><b>1. Reproducción de audio local</b><p>Reproduce archivos de audio seleccionados desde el almacenamiento del teléfono. No necesita una cuenta ni un servicio de streaming.</p></div>
+<div class="spec"><b>2. Abrir un archivo de audio</b><p>Desde “ABRIR” podés seleccionar un archivo mediante el selector de documentos de Android.</p></div>
+<div class="spec"><b>3. Elegir una carpeta de música</b><p>También podés seleccionar una carpeta. AGUARÁ conserva el permiso de lectura de esa carpeta para volver a utilizarla.</p></div>
+<div class="spec"><b>4. Buscar música dentro de subcarpetas</b><p>Al cargar una carpeta, el código recorre sus subcarpetas y reúne los archivos que reconoce como audio.</p></div>
+<div class="spec"><b>5. Cola de reproducción</b><p>La música encontrada se carga en una cola y podés abrir la cola para ver sus canciones y elegir cuál reproducir.</p></div>
+<div class="spec"><b>6. Controles de reproducción</b><p>Incluye anterior, reproducción/pausa, siguiente y una barra para desplazarte dentro de la canción.</p></div>
+<div class="spec"><b>7. Reproducción aleatoria</b><p>El botón 🔀 mezcla el orden de la cola y permite volver al orden original.</p></div>
+<div class="spec"><b>8. Repetición de canción o cola</b><p>El botón de repetición permite repetir la canción actual, repetir la cola completa o dejar la reproducción sin repetición.</p></div>
+<div class="spec"><b>9. Favoritos</b><p>El código incorpora un sistema local de favoritos que guarda las canciones marcadas en las preferencias de Android y permite recuperarlas desde la lista de favoritos.</p></div>
+<div class="spec"><b>10. Historial</b><p>Guarda localmente las últimas reproducciones, hasta un máximo de 50 entradas, y permite volver a reproducirlas.</p></div>
+<div class="spec"><b>11. Continuar escuchando</b><p>Guarda la última canción y la posición de reproducción para poder retomarla posteriormente.</p></div>
+<div class="spec"><b>12. Título, artista y álbum</b><p>Lee metadatos disponibles del archivo y los muestra en la interfaz. Si faltan, utiliza textos de reemplazo.</p></div>
+<div class="spec"><b>13. Portada del audio</b><p>Si el archivo contiene una portada incrustada, intenta mostrarla. Si no encuentra una, muestra la portada de AGUARÁ.</p></div>
+<div class="spec"><b>14. Ecualizador de 10 bandas</b><p>Incluye 31 Hz, 62 Hz, 125 Hz, 250 Hz, 500 Hz, 1 kHz, 2 kHz, 4 kHz, 8 kHz y 16 kHz.</p></div>
+<div class="spec"><b>15. Presets de ecualización</b><p>Incluye Plano, Bajos, Voz, Rock, Acústico y Lo-Fi.</p></div>
+<div class="spec"><b>16. Audio Lab</b><p>El modo avanzado dispone de PREAMP, limitador, Bass Boost, Válvula/Drive y Vinilo/Ambiente.</p></div>
+<div class="spec"><b>17. Ajustes de audio persistentes</b><p>Los valores del ecualizador y de los controles avanzados se guardan localmente y se cargan nuevamente al crear el motor de audio.</p></div>
+<div class="spec"><b>18. MediaSession y controles multimedia</b><p>AGUARÁ utiliza la MediaSession de Android y publica una notificación multimedia con anterior, play/pausa y siguiente mientras hay una reproducción activa.</p></div>
+<div class="spec"><b>19. Abrir audio desde otra aplicación</b><p>El manifiesto declara compatibilidad con archivos <code>audio/*</code> abiertos mediante la acción VIEW de Android.</p></div>
+<div class="spec"><b>20. Sin publicidad, suscripciones ni compras internas</b><p>La aplicación no contiene anuncios ni compras dentro de la app. El apoyo económico se realiza mediante un enlace externo voluntario.</p></div>
+<div class="spec"><b>21. Biblioteca local</b><p>La implementación actual trabaja con URIs y almacenamiento local de Android; no incorpora una cuenta de usuario ni una biblioteca musical propia en la nube.</p></div>
 </div>
+
 <a class="back" href="#">↑ Volver arriba</a>
 </section>
 
