@@ -48,7 +48,7 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <p>Reproducí tu música almacenada localmente en Android, con un motor de reproducción propio y sin depender de servicios de streaming ni enviar tu biblioteca a la nube.</p>
 <a class="download" href="https://github.com/Trotabares1978/Aguara/releases/download/v0.0.163/app-debug.apk">↓ DESCARGAR AGUARÁ</a>
 <a class="donate" href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ APOYAR AGUARÁ</a>
-<div class="counterline"><span>👁️ <img class="counterbadge" src="https://countapi.mileshilliard.com/api/v1/hit/aguara_github_pages_visitors_2026/shield?text=visitante" alt="Contador de visitantes"></span><span>📥 <img id="downloadBadge" class="counterbadge" src="https://countapi.mileshilliard.com/api/v1/get/aguara_github_pages_downloads_2026/shield?text=descargas" alt="Contador de descargas"></span></div>
+<div class="counterline"><span>👁️ Visitantes <strong id="visitorCount">…</strong></span><span>📥 Descargas <strong id="downloadCount">…</strong></span><span>☕ Apoyos <strong id="supportCount">…</strong></span></div>
 <p class="note">Gratis · Sin suscripciones · Sin compras internas · Sin publicidad</p>
 <div class="features">
 <div class="feature"><b>🎵 Local</b><span>Archivos de audio directamente desde el teléfono.</span></div>
@@ -96,12 +96,28 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <footer>AGUARÁ · Reproductor de audio local para Android · Proyecto independiente</footer>
 </main>
 <script>
-document.querySelector(".download")?.addEventListener("click",()=>{
-  const img=new Image();
-  img.src="https://countapi.mileshilliard.com/api/v1/hit/aguara_github_pages_downloads_2026?_="+Date.now();
-  const badge=document.getElementById("downloadBadge");
-  if(badge) setTimeout(()=>badge.src="https://countapi.mileshilliard.com/api/v1/get/aguara_github_pages_downloads_2026/shield?text=descargas&_="+Date.now(),300);
-});
+const ABACUS="https://abacus.jasoncameron.dev";
+async function hit(key,id){
+  try{
+    const r=await fetch(ABACUS+"/hit/aguara/"+key,{cache:"no-store",keepalive:true});
+    const d=await r.json();
+    const el=document.getElementById(id);
+    if(el && d && d.value!==undefined) el.textContent=Number(d.value).toLocaleString("es-AR");
+  }catch(e){}
+}
+async function get(key,id){
+  try{
+    const r=await fetch(ABACUS+"/get/aguara/"+key,{cache:"no-store"});
+    const d=await r.json();
+    const el=document.getElementById(id);
+    if(el && d && d.value!==undefined) el.textContent=Number(d.value).toLocaleString("es-AR");
+  }catch(e){}
+}
+hit("visitors","visitorCount");
+get("downloads","downloadCount");
+get("support","supportCount");
+document.querySelector(".download")?.addEventListener("click",()=>hit("downloads","downloadCount"));
+document.querySelector(".donate")?.addEventListener("click",()=>hit("support","supportCount"));
 </script>
 </body>
 </html>
