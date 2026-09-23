@@ -14,10 +14,10 @@ main{width:min(920px,92%);margin:auto;padding:42px 0 64px;text-align:center}
 h1{font-size:clamp(42px,10vw,76px);letter-spacing:.08em;margin:0 0 6px;font-weight:800}
 .tag{font-size:18px;color:var(--muted);margin:0 auto 24px}
 .nav{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 28px}
-.nav a{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:999px;border:1px solid #ffffff20;background:#202020;color:#eee;text-decoration:none;font-weight:700}
-.nav a:hover{background:#2b2b2b}
+.nav a,.biglink{display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border-radius:999px;border:1px solid #ffffff20;background:#202020;color:#eee;text-decoration:none;font-weight:800}
+.nav a:hover,.biglink:hover{background:#2b2b2b}
 .card{background:#171717dd;border:1px solid #ffffff12;border-radius:24px;padding:30px;box-shadow:0 20px 70px #0008;backdrop-filter:blur(10px);margin-bottom:22px}
-h2{font-size:28px;margin:0 0 12px}h3{font-size:20px;margin:0 0 8px}p{line-height:1.6;color:#c8c8c8}
+h2{font-size:28px;margin:0 0 12px}p{line-height:1.6;color:#c8c8c8}
 .download,.donate{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin:18px 5px 8px;padding:16px 24px;border-radius:999px;color:#111;text-decoration:none;font-weight:800;font-size:17px;box-shadow:0 10px 30px #0007;transition:.18s}
 .download{background:var(--accent)}.donate{background:#f0c86b}.download:hover,.donate:hover{transform:translateY(-2px);background:var(--accent2)}
 .note{font-size:13px;color:#858585;margin-top:5px}
@@ -29,7 +29,7 @@ h2{font-size:28px;margin:0 0 12px}h3{font-size:20px;margin:0 0 8px}p{line-height
 .spec b{display:block;color:#fff;margin-bottom:5px}.spec p{margin:0;color:#aaa;font-size:14px}
 .back{display:inline-block;margin-top:22px;color:#d6a84f;text-decoration:none;font-weight:700}
 footer{margin-top:28px;color:#777;font-size:13px}
-@media(max-width:650px){main{padding-top:30px}.card{padding:22px 16px}.features{grid-template-columns:1fr}.logo{width:92px;height:92px}.download,.donate{width:100%;margin-left:0;margin-right:0}}
+@media(max-width:650px){main{padding-top:30px}.card{padding:22px 16px}.features{grid-template-columns:1fr}.logo{width:92px;height:92px}.download,.donate,.biglink{width:100%;margin-left:0;margin-right:0}}
 </style>
 </head>
 <body>
@@ -39,17 +39,16 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <p class="tag">Un reproductor de audio local para Android.</p>
 
 <nav class="nav">
-<a href="#caracteristicas">🎵 Características</a>
-<a href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ Donar / Apoyar</a>
+<a href="#caracteristicas">🎵 CARACTERÍSTICAS</a>
+<a href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ DONAR / APOYAR</a>
 </nav>
 
 <section class="card">
 <h2>Tu música. En tu teléfono.</h2>
 <p>Reproducí tu música almacenada localmente en Android, sin depender de servicios de streaming ni enviar tu biblioteca a la nube.</p>
-<a class="download" href="aguara.apk" download>↓ Descargar AGUARÁ</a>
-<a class="donate" href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ Apoyar AGUARÁ</a>
+<a class="download" href="https://github.com/Trotabares1978/Aguara/releases/latest/download/app-debug.apk">↓ DESCARGAR AGUARÁ</a>
+<a class="donate" href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ APOYAR AGUARÁ</a>
 <p class="note">Gratis · Sin suscripciones · Sin compras internas · Sin publicidad</p>
-
 <div class="features">
 <div class="feature"><b>🎵 Local</b><span>Reproducí tus archivos de audio directamente desde el teléfono.</span></div>
 <div class="feature"><b>🔒 Privado</b><span>Tu música permanece en tu dispositivo.</span></div>
@@ -57,10 +56,15 @@ footer{margin-top:28px;color:#777;font-size:13px}
 </div>
 </section>
 
+<section class="card">
+<h2>¿Qué tiene AGUARÁ?</h2>
+<p>Conocé todas las funciones del reproductor, explicadas una por una.</p>
+<a class="biglink" href="#caracteristicas">🎵 VER TODAS LAS CARACTERÍSTICAS</a>
+</section>
+
 <section id="caracteristicas" class="card">
 <h2>Características de AGUARÁ</h2>
 <p>Todo lo que ofrece actualmente el reproductor, explicado punto por punto.</p>
-
 <div class="specs">
 <div class="spec"><b>1. Reproducción de música local</b><p>Reproduce archivos de audio almacenados en tu teléfono, sin depender de streaming ni de una cuenta en la nube.</p></div>
 <div class="spec"><b>2. Selección de carpetas</b><p>Podés elegir una carpeta de música y AGUARÁ analiza su contenido para cargar los archivos de audio disponibles.</p></div>
@@ -83,7 +87,6 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <div class="spec"><b>19. Sin suscripciones ni compras internas</b><p>El proyecto se distribuye sin suscripciones y sin compras dentro de la aplicación.</p></div>
 <div class="spec"><b>20. Privacidad local</b><p>La biblioteca musical se mantiene en el dispositivo; AGUARÁ está pensado como reproductor local y no como servicio de almacenamiento en la nube.</p></div>
 </div>
-
 <a class="back" href="#">↑ Volver arriba</a>
 </section>
 
