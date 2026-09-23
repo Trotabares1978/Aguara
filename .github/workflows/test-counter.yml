@@ -1,0 +1,21 @@
+name: Test AGUARÁ Counter API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-counter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test GET
+        run: |
+          set -x
+          curl -i --max-time 20 "https://aguara-contadores.trotabares.workers.dev/?t=$(date +%s)"
+      - name: Test visitor hit
+        run: |
+          set -x
+          curl -i --max-time 20 "https://aguara-contadores.trotabares.workers.dev/hit?key=visitors&t=$(date +%s)"
+      - name: Read counters again
+        run: |
+          set -x
+          curl -i --max-time 20 "https://aguara-contadores.trotabares.workers.dev/?t=$(date +%s)"
