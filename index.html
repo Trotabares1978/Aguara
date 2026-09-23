@@ -96,28 +96,45 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <footer>AGUARÁ · Reproductor de audio local para Android · Proyecto independiente</footer>
 </main>
 <script>
-const ABACUS="https://abacus.jasoncameron.dev";
-async function hit(key,id){
+const COUNTER_API="https://aguara-contadores.trotabares.workers.dev";
+
+async function loadCounters(){
   try{
-    const r=await fetch(ABACUS+"/hit/aguara/"+key,{cache:"no-store",keepalive:true});
-    const d=await r.json();
-    const el=document.getElementById(id);
-    if(el && d && d.value!==undefined) el.textContent=Number(d.value).toLocaleString("es-AR");
+    const r=await fetch(COUNTER_API+"/",{
+      cache:"no-store",
+      credentials:"omit"
+    });
+    const rows=await r.json();
+    const counts=Object.fromEntries(rows.map(x=>[x.key,Number(x.value)]));
+    const v=document.getElementById("visitorCount");
+    const d=document.getElementById("downloadCount");
+    const s=document.getElementById("supportCount");
+    if(v) v.textContent=(counts.visitors??0).toLocaleString("es-AR");
+    if(d) d.textContent=(counts.downloads??0).toLocaleString("es-AR");
+    if(s) s.textContent=(counts.support??0).toLocaleString("es-AR");
   }catch(e){}
 }
-async function get(key,id){
+
+async function registerHit(key){
   try{
-    const r=await fetch(ABACUS+"/get/aguara/"+key,{cache:"no-store"});
-    const d=await r.json();
-    const el=document.getElementById(id);
-    if(el && d && d.value!==undefined) el.textContent=Number(d.value).toLocaleString("es-AR");
+    await fetch(COUNTER_API+"/hit?key="+encodeURIComponent(key),{
+      cache:"no-store",
+      credentials:"omit",
+      keepalive:true
+    });
   }catch(e){}
 }
-hit("visitors","visitorCount");
-get("downloads","downloadCount");
-get("support","supportCount");
-document.querySelector(".download")?.addEventListener("click",()=>hit("downloads","downloadCount"));
-document.querySelector(".donate")?.addEventListener("click",()=>hit("support","supportCount"));
+
+registerHit("visitors").then(loadCounters);
+loadCounters();
+
+document.querySelector(".download")?.addEventListener("click",()=>{
+  registerHit("downloads").then(loadCounters);
+});
+
+document.querySelector(".donate")?.addEventListener("click",()=>{
+  registerHit("support").then(loadCounters);
+});
 </script>
 </body>
 </html>
