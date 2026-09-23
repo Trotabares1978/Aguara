@@ -485,7 +485,10 @@ public class AguaraPcmPlayer {
             }
 
             if (environmentActive) {
-                sample = procesarAmbiente(sample, channel);
+                // Guazú usa su ambiente propio; los demás modos usan los perfiles normales.
+                sample = guazuMode
+                        ? procesarAmbienteGuazu(sample, channel)
+                        : procesarAmbiente(sample, channel);
             }
 
             if (sample > 1f) sample = 1f;
