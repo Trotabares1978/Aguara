@@ -1,7 +1,8 @@
 name: Test AGUARÁ Counter API
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   test-counter:
