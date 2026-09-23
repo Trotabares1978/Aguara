@@ -381,7 +381,12 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(fondo);
-        root.addView(construirReproductor(),
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        scroll.addView(construirReproductor(),
+                new ScrollView.LayoutParams(-1, -1));
+        root.addView(scroll,
                 new LinearLayout.LayoutParams(-1, -1));
         setContentView(root);
         estilizarBotonesPrincipales(root);
@@ -494,7 +499,7 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
         abrirParams.gravity = Gravity.CENTER;
         miniPlayer.addView(miniAbrir, abrirParams);
 
-        root.addView(miniPlayer,
+        vista.addView(miniPlayer,
                 new LinearLayout.LayoutParams(-1, dp(54)));
 
         LinearLayout modos = new LinearLayout(this);
