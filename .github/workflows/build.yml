@@ -1,4 +1,4 @@
-name: Build and publish AGUARÁ
+name: Build AGUARÁ
 
 on:
   push:
@@ -7,55 +7,13 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: build-aguara
   cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Configurar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Compilar AGUARÁ
-        run: ./gradlew assembleDebug
-
-      - name: Preparar sitio
-        run: |
-          mkdir -p site/assets
-          cp app/build/outputs/apk/debug/app-debug.apk site/aguara.apk
-          cp app/src/main/res/drawable/aguara_icon.png site/assets/aguara_icon.png
-          test -f index.html && cp index.html site/index.html
-
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Preparar artefacto Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - name: Publicar en GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  artifact:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Descargar código
