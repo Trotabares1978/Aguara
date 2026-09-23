@@ -482,8 +482,8 @@ public class MainActivity extends Activity implements PlaybackService.PlaybackLi
 
         miniPlayer = new LinearLayout(this);
         miniPlayer.setOrientation(LinearLayout.HORIZONTAL);
-        miniPlayer.setGravity(Gravity.CENTER_VERTICAL);
-        miniPlayer.setPadding(dp(12), dp(6), dp(8), dp(6));
+        miniPlayer.setGravity(Gravity.CENTER);
+        miniPlayer.setPadding(0, dp(6), 0, dp(6));
         miniPlayer.setBackgroundColor(Color.rgb(30, 30, 30));
 
         Button miniAbrir = new Button(this);
