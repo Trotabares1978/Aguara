@@ -20,7 +20,7 @@ h1{font-size:clamp(42px,10vw,76px);letter-spacing:.08em;margin:0 0 6px;font-weig
 h2{font-size:28px;margin:0 0 12px}p{line-height:1.6;color:#c8c8c8}
 .download,.donate{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin:18px 5px 8px;padding:16px 24px;border-radius:999px;color:#111;text-decoration:none;font-weight:800;font-size:17px;box-shadow:0 10px 30px #0007;transition:.18s}
 .download{background:var(--accent)}.donate{background:#f0c86b}.download:hover,.donate:hover{transform:translateY(-2px);background:var(--accent2)}
-.note{font-size:13px;color:#858585;margin-top:5px}
+.note{font-size:13px;color:#858585;margin-top:5px}.counterline{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:12px 0 2px;color:#aaa;font-size:13px}.counterline strong{color:#f0c86b;font-size:15px}
 .features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px}
 .feature{padding:18px 12px;border-radius:16px;background:#202020;border:1px solid #fff1}
 .feature b{display:block;margin-bottom:5px}.feature span{font-size:13px;color:#999}
@@ -48,6 +48,7 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <p>Reproducí tu música almacenada localmente en Android, con un motor de reproducción propio y sin depender de servicios de streaming ni enviar tu biblioteca a la nube.</p>
 <a class="download" href="https://github.com/Trotabares1978/Aguara/releases/download/v0.0.163/app-debug.apk">↓ DESCARGAR AGUARÁ</a>
 <a class="donate" href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ APOYAR AGUARÁ</a>
+<div class="counterline"><span>👁️ Sos el visitante N° <strong id="visitorCount">...</strong></span><span>📥 Descargas: <strong id="downloadCount">...</strong></span></div>
 <p class="note">Gratis · Sin suscripciones · Sin compras internas · Sin publicidad</p>
 <div class="features">
 <div class="feature"><b>🎵 Local</b><span>Archivos de audio directamente desde el teléfono.</span></div>
@@ -94,5 +95,16 @@ footer{margin-top:28px;color:#777;font-size:13px}
 
 <footer>AGUARÁ · Reproductor de audio local para Android · Proyecto independiente</footer>
 </main>
+<script>
+const COUNTER_BASE="https://countapi.mileshilliard.com/api/v1";
+const VISITOR_KEY="aguara_github_pages_visitors_2026";
+const DOWNLOAD_KEY="aguara_github_pages_downloads_2026";
+async function loadCounter(key,id,hit=false){
+ try{const r=await fetch(COUNTER_BASE+"/"+(hit?"hit":"get")+"/"+key,{cache:"no-store"});const d=await r.json();const el=document.getElementById(id);if(el&&Number.isFinite(Number(d.value)))el.textContent=Number(d.value).toLocaleString("es-AR");}catch(e){}
+}
+loadCounter(VISITOR_KEY,"visitorCount",true);
+loadCounter(DOWNLOAD_KEY,"downloadCount");
+document.querySelector(".download")?.addEventListener("click",()=>{fetch(COUNTER_BASE+"/hit/"+DOWNLOAD_KEY,{cache:"no-store",keepalive:true}).then(r=>r.json()).then(d=>{const el=document.getElementById("downloadCount");if(el&&Number.isFinite(Number(d.value)))el.textContent=Number(d.value).toLocaleString("es-AR");}).catch(()=>{});});
+</script>
 </body>
 </html>
