@@ -48,7 +48,7 @@ footer{margin-top:28px;color:#777;font-size:13px}
 <p>Reproducí tu música almacenada localmente en Android, con un motor de reproducción propio y sin depender de servicios de streaming ni enviar tu biblioteca a la nube.</p>
 <a class="download" href="https://github.com/Trotabares1978/Aguara/releases/download/v0.0.169/app-debug.apk">↓ DESCARGAR AGUARÁ</a>
 <a class="donate" href="https://link.mercadopago.com.ar/aguara" target="_blank" rel="noopener">☕ APOYAR AGUARÁ</a>
-<div class="counterline"><span>👁️ Visitantes <strong id="visitorCount">…</strong></span><span>📥 Descargas <strong id="downloadCount">…</strong></span><span>☕ Donaciones <strong id="supportCount">…</strong></span></div>
+<div class="counterline"><span>👁️ Visitantes <strong id="visitorCount">0</strong></span><span>📥 Descargas <strong id="downloadCount">0</strong></span><span>☕ Donaciones <strong id="supportCount">0</strong></span></div>
 <p class="note">Gratis · Sin suscripciones · Sin compras internas · Sin publicidad</p>
 <div class="features">
 <div class="feature"><b>🎵 Local</b><span>Archivos de audio directamente desde el teléfono.</span></div>
@@ -97,44 +97,70 @@ footer{margin-top:28px;color:#777;font-size:13px}
 </main>
 <script>
 const COUNTER_API="https://aguara-contadores.trotabares.workers.dev";
+let countersLoaded=false;
+
+function paintCounters(counts){
+  const v=document.getElementById("visitorCount");
+  const d=document.getElementById("downloadCount");
+  const s=document.getElementById("supportCount");
+  if(v) v.textContent=Number(counts.visitors??0).toLocaleString("es-AR");
+  if(d) d.textContent=Number(counts.downloads??0).toLocaleString("es-AR");
+  if(s) s.textContent=Number(counts.support??0).toLocaleString("es-AR");
+}
 
 async function loadCounters(){
-  try{
-    const r=await fetch(COUNTER_API+"/",{
-      cache:"no-store",
-      credentials:"omit"
-    });
-    const rows=await r.json();
-    const counts=Object.fromEntries(rows.map(x=>[x.key,Number(x.value)]));
-    const v=document.getElementById("visitorCount");
-    const d=document.getElementById("downloadCount");
-    const s=document.getElementById("supportCount");
-    if(v) v.textContent=(counts.visitors??0).toLocaleString("es-AR");
-    if(d) d.textContent=(counts.downloads??0).toLocaleString("es-AR");
-    if(s) s.textContent=(counts.support??0).toLocaleString("es-AR");
-  }catch(e){}
+  const r=await fetch(COUNTER_API+"/?t="+Date.now(),{
+    method:"GET",
+    mode:"cors",
+    cache:"no-store",
+    credentials:"omit"
+  });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  const rows=await r.json();
+  const counts=Object.fromEntries(rows.map(x=>[x.key,Number(x.value)]));
+  paintCounters(counts);
+  countersLoaded=true;
+  return counts;
 }
 
 async function registerHit(key){
-  try{
-    await fetch(COUNTER_API+"/hit?key="+encodeURIComponent(key),{
-      cache:"no-store",
-      credentials:"omit",
-      keepalive:true
-    });
-  }catch(e){}
+  const r=await fetch(COUNTER_API+"/hit?key="+encodeURIComponent(key)+"&t="+Date.now(),{
+    method:"GET",
+    mode:"cors",
+    cache:"no-store",
+    credentials:"omit",
+    keepalive:true
+  });
+  if(!r.ok) throw new Error("HTTP "+r.status);
 }
 
-registerHit("visitors").then(loadCounters);
-loadCounters();
+(async()=>{
+  try{
+    await registerHit("visitors");
+    await loadCounters();
+  }catch(e){
+    console.warn("AGUARÁ: no se pudo actualizar el contador",e);
+    try{ await loadCounters(); }catch(_){}
+  }
+})();
 
-document.querySelector(".download")?.addEventListener("click",()=>{
-  registerHit("downloads").then(loadCounters);
+document.querySelector(".download")?.addEventListener("click",async()=>{
+  try{
+    await registerHit("downloads");
+    await loadCounters();
+  }catch(e){
+    console.warn("AGUARÁ: no se pudo registrar la descarga",e);
+  }
 });
 
-document.querySelector(".donate")?.addEventListener("click",()=>{
-  registerHit("support").then(loadCounters);
+document.querySelector(".donate")?.addEventListener("click",async()=>{
+  try{
+    await registerHit("support");
+    await loadCounters();
+  }catch(e){
+    console.warn("AGUARÁ: no se pudo registrar el apoyo",e);
+  }
 });
-</script>
+</script>>
 </body>
 </html>
